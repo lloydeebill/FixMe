@@ -1,8 +1,9 @@
 <?php
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\UserController;
 
+// This test route is safe to keep!
 Route::get('/test', function () {
     return response()->json([
         'status' => 'success',
@@ -10,7 +11,11 @@ Route::get('/test', function () {
     ]);
 });
 
-Route::get('/users', [UserController::class, 'index']);
-Route::post('/users', [UserController::class, 'store']);
-Route::put('/users/{id}', [UserController::class, 'update']);
-Route::delete('/users/{id}', [UserController::class, 'destroy']);
+// ---------------------------------------------------------------------
+// DELETED: The old UserController routes were causing the crash.
+// Since we are using Inertia for everything now, we don't need these!
+// ---------------------------------------------------------------------
+
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return $request->user();
+});

@@ -2,39 +2,40 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-// Assuming you have controllers for Auth, adjust namespace/paths as needed
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\GoogleLoginController;
 
-// --- Inertia Page Routes (GET requests) ---
-// These routes return the corresponding React page component.
+// --- Public Routes ---
 
+// Root URL shows Home
 Route::get('/', function () {
-  // This will render the resources/js/Pages/Login.jsx component
-  return Inertia::render('Login');
-});
+  return Inertia::render('Home');
+})->name('home');
 
+// DELETE THE OLD LOGIN ROUTE AND REPLACE WITH THIS:
+// Now /login also renders 'Home' because that's where your form is.
 Route::get('/login', function () {
-  // Renders the Login page
-  return Inertia::render('Login');
+  return Inertia::render('Home');
 })->name('login');
 
 Route::get('/signup', function () {
-  // Renders the Register page
   return Inertia::render('Register');
 })->name('register');
 
-
-// --- Form Submission Routes (POST requests) ---
-// These routes handle the Inertia form submissions and should return redirects or errors.
-
+// --- Auth Logic ---
 Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
+// --- Google OAuth ---
+Route::get('/auth/google', [GoogleLoginController::class, 'redirectToGoogle'])->name('google.redirect');
+Route::get('/auth/google/callback', [GoogleLoginController::class, 'handleGoogleCallback'])->name('google.callback');
 
-// Example: Dashboard/Protected Route (Once a user is logged in)
+// --- Protected Routes ---
 Route::middleware(['auth'])->group(function () {
   Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard'); // You would create this page next
+    return Inertia::render('Dashboard');
   })->name('dashboard');
+
+  Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });

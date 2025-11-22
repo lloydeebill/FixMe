@@ -13,17 +13,22 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     /**
+     * ⚠️ CRITICAL FIX: Tell Laravel your primary key is 'user_id', not 'id'.
+     * If you remove this, Login/Register will crash.
+     */
+    protected $primaryKey = 'user_id';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
      */
     protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'isRepairer', //  add this line
+        'name',
+        'email',
+        'password',
+        'isRepairer', // Added as per your request
     ];
-
 
     /**
      * The attributes that should be hidden for serialization.
@@ -40,11 +45,12 @@ class User extends Authenticatable
      *
      * @return array<string, string>
      */
-    // protected function casts(): array
-    // {
-    //     return [
-    //         'email_verified_at' => 'datetime',
-    //         'password' => 'hashed',
-    //     ];
-    // }
+    protected function casts(): array
+    {
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+            'isRepairer' => 'boolean', // Good practice to cast this to a boolean
+        ];
+    }
 }
