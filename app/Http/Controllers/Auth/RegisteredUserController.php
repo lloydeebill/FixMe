@@ -8,34 +8,31 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Auth\Events\Registered; // 👈 CRITICAL: Import this event
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Handle an incoming registration request.
-     * This replaces the 'store' method of your old UserController.
-     */
     public function store(Request $request): RedirectResponse
     {
-        // 1. Validate the form data sent from React
         $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique(User::class)],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        // 2. Create the new User in the database
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'isRepairer' => false,
         ]);
 
-        // 3. Log the user in immediately (Session based)
-        Auth::login($user);
+        // 1. Send the verification email using the Registered event
+        event(new Registered($user));
 
-        // 4. Redirect to the dashboard (Inertia handles this redirect)
-        return redirect()->route('dashboard');
+        // 2. Redirect to the login page with a success message
+        return redirect()->route('login')->with('message', 'Registration complete! Please check your inbox and click the verification link to activate your account.');
     }
 }

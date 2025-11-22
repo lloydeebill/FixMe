@@ -2,20 +2,18 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+// 1. Un-comment and Import MustVerifyEmail
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-class User extends Authenticatable
+// 2. Add 'implements MustVerifyEmail' to the class definition
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
-    /**
-     * ⚠️ CRITICAL FIX: Tell Laravel your primary key is 'user_id', not 'id'.
-     * If you remove this, Login/Register will crash.
-     */
     protected $primaryKey = 'user_id';
 
     /**
@@ -48,9 +46,10 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            // This column tracks verification status
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'isRepairer' => 'boolean', // Good practice to cast this to a boolean
+            'isRepairer' => 'boolean',
         ];
     }
 }

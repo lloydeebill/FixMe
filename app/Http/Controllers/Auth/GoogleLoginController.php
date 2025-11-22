@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Support\Facades\Log; // Import Log to see errors
+use Illuminate\Support\Facades\Log;
 
 class GoogleLoginController extends Controller
 {
@@ -25,6 +25,7 @@ class GoogleLoginController extends Controller
             $user = User::where('email', $googleUser->getEmail())->first();
 
             if (!$user) {
+                // User does not exist, create new account
                 $user = User::create([
                     'name' => $googleUser->getName(),
                     'email' => $googleUser->getEmail(),
@@ -33,12 +34,15 @@ class GoogleLoginController extends Controller
                 ]);
             }
 
+            if (is_null($user->email_verified_at)) {
+                $user->markEmailAsVerified();
+            }
+
             Auth::login($user);
 
             return redirect()->route('dashboard');
         } catch (\Exception $e) {
             Log::error('Google Login Error: ' . $e->getMessage());
-
             return redirect()->route('login')->withErrors(['email' => 'Google Login failed. Check logs.']);
         }
     }

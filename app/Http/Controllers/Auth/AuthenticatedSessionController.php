@@ -30,11 +30,21 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
-        // 3. Security: Regenerate session ID
+        // ⚠️ CRITICAL STEP: Check if the user has verified their email
+        if (! $request->user()->hasVerifiedEmail()) {
+            Auth::logout(); // Log out the user immediately
+
+            // Block login and throw a message for the user
+            throw ValidationException::withMessages([
+                'email' => 'Account unverified. Please check your email for the activation link.',
+            ]);
+        }
+
+        // 3. If verified, proceed with session
         $request->session()->regenerate();
 
         // 4. Redirect to Dashboard
-        return redirect()->route('dashboard');
+        return redirect()->intended(route('dashboard'));
     }
 
     /**
