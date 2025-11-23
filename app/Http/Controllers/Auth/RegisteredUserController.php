@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Auth\Events\Registered; // 👈 CRITICAL: Import this event
+use Illuminate\Auth\Events\Registered;
 
 class RegisteredUserController extends Controller
 {

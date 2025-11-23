@@ -1,129 +1,52 @@
-import React, { useState } from "react";
-import { FaEnvelope, FaLock } from "react-icons/fa";
-import { FcGoogle } from "react-icons/fc";
-import { AiFillEye, AiFillEyeInvisible } from "react-icons/ai";
-import { Link, useForm } from "@inertiajs/react"; 
+import React from "react";
+import AuthSwitch from "../Components/AuthSwitch";
+import { usePage } from "@inertiajs/react"; // 👈 Import usePage to get the backend message
 
-const Login = () => {
-  const { data, setData, post, processing, errors } = useForm({
-    email: "",
-    password: "",
-  });
-  
-  const [showPassword, setShowPassword] = useState(false);
-  
-  // 1. Add State for the Logo Source
-  const [logoSrc, setLogoSrc] = useState("/FixMeLogo.svg");
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setData(name, value);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    post('/login');
-  };
+export default function Login() {
+  // 1. Get the flash data from Laravel
+  const { flash } = usePage().props;
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100 p-4">
-        <div className="w-full max-w-sm bg-white border border-gray-200 rounded-xl shadow-xl p-6 sm:p-8">
-            {/* Logo */}
-            <div className="flex justify-center mb-4">
-                <img
-                    // 2. Use the state variable here
-                    src={logoSrc}
-                    alt="FixMe Logo"
-                    className="w-16 h-16 object-contain"
-                    // 3. Update state on error (Stops the flickering)
-                    onError={() => setLogoSrc("https://placehold.co/64x64/0056b3/ffffff?text=F M")}
-                />
-            </div>
-
-            <h2 className="text-2xl font-bold text-center text-blue-800 mb-6">
-                Login your account
-            </h2>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Email */}
-                <div className="relative">
-                    <FaEnvelope className="absolute left-3 top-3 text-gray-400" />
-                    <input
-                        type="email"
-                        name="email"
-                        placeholder="Email"
-                        value={data.email}
-                        onChange={(e) => setData('email', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                    {errors.email && <div className="text-red-500 text-xs mt-1">{errors.email}</div>}
-                </div>
-
-                {/* Password */}
-                <div className="relative">
-                    <FaLock className="absolute left-3 top-3 text-gray-400" />
-                    <input
-                        type={showPassword ? "text" : "password"}
-                        name="password"
-                        placeholder="Password"
-                        value={data.password}
-                        onChange={(e) => setData('password', e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg pl-10 pr-10 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                    <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
-                    >
-                        {showPassword ? <AiFillEyeInvisible /> : <AiFillEye />}
-                    </button>
-                    {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
-                </div>
-
-                <div className="flex justify-end">
-                    <Link href="/forgot-password" className="text-xs text-gray-500 hover:underline">
-                        Forgot Password?
-                    </Link>
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className={`w-full font-semibold py-2 rounded-lg transition ${
-                        processing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
-                    }`}
-                >
-                    {processing ? 'Signing In...' : 'Sign In'}
-                </button>
-            </form>
-
-            <div className="my-6 flex items-center">
-                <hr className="flex-grow border-gray-300" />
-                <span className="px-2 text-gray-400 text-sm">Or log in with</span>
-                <hr className="flex-grow border-gray-300" />
-            </div>
-
-            {/* Google Login */}
-            <a
-                href="/auth/google"
-                className="flex items-center justify-center w-full border border-gray-300 bg-gray-50 py-2 rounded-lg hover:bg-gray-100 transition"
-            >
-                <FcGoogle className="mr-2 text-xl" />
-                <span className="font-medium text-gray-700 text-sm">Google</span>
-            </a>
-
-            <p className="mt-6 text-sm text-center text-gray-600">
-                Don’t have an account?{" "}
-                <Link
-                    href="/signup"
-                    className="text-blue-600 font-medium hover:underline"
-                >
-                    Sign Up
-                </Link>
-            </p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white px-4">
+      {/* Wrapper for both sections */}
+      <div className="flex flex-col md:flex-row items-center justify-center max-w-6xl w-full gap-10">
+        
+        {/* LEFT – App Mockup (Hidden on mobile) */}
+        <div className="hidden md:flex flex-1 justify-end">
+          <img
+            src="/fixme-mockup.svg"
+            alt="FixMe App Mockup"
+            className="w-72 sm:w-80 md:w-96 lg:w-[500px] object-contain"
+            onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/400x600/0056b3/ffffff?text=Mockup"; }}
+          />
         </div>
+
+        {/* RIGHT – Auth Switch & Global Alerts */}
+        <div className="flex-1 flex flex-col justify-start items-center w-full">
+          <div className="w-full max-w-sm">
+            
+            {/* 🚨 GLOBAL SUCCESS MESSAGE 🚨 
+                This sits OUTSIDE the AuthSwitch, so it stays visible 
+                even when the form switches or reloads. 
+            */}
+            {flash.message && (
+                <div className="mb-6 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 shadow-md rounded-r">
+                    <div className="flex items-center">
+                        <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span className="font-bold">Success!</span>
+                    </div>
+                    <p className="mt-1 text-sm">{flash.message}</p>
+                </div>
+            )}
+
+            {/* This component handles the switching between Login and Register forms */}
+            <AuthSwitch /> 
+            
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
-
-export default Login;

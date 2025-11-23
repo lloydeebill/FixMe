@@ -1,12 +1,11 @@
-
 import React from "react";
 import { FaUser, FaEnvelope, FaLock } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import { Link, useForm } from "@inertiajs/react";
 
 export default function RegisterForm() {
-  // Inertia's useForm hook handles state and submission
-  const { data, setData, post, processing, errors } = useForm({
+  // 1. We added 'recentlySuccessful' to the destructuring here 👇
+  const { data, setData, post, processing, errors, recentlySuccessful } = useForm({
     name: "",
     email: "",
     password: "",
@@ -95,6 +94,16 @@ export default function RegisterForm() {
             >
                 {processing ? 'Registering...' : 'Sign Up'}
             </button>
+
+            {/* ✅ SUCCESS MESSAGE 
+               This block only appears if the form submission was successful 
+            */}
+            {recentlySuccessful && (
+                <div className="mt-3 p-3 bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg text-center animate-pulse">
+                    <strong>Success!</strong> Please check your email to confirm your account.
+                </div>
+            )}
+
         </form>
 
         {/* Social Login Divider */}
