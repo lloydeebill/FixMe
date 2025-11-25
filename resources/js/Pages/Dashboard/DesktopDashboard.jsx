@@ -1,27 +1,9 @@
 import React from 'react';
-// 🚨 Make sure this path is correct relative to this file
-import RepairerFinder from '../../Components/RepairerFinder'; 
+import AuthenticatedLayout from '../../Layouts/AuthenticatedLayout';
+import { Head, Link } from '@inertiajs/react';
+import RepairerFinder from '../../Components/RepairerFinder';
 
-// Mocks for preview
-const Head = ({ title }) => null;
-const Link = ({ href, className, children }) => (
-    <a href={href} className={className} onClick={(e) => e.preventDefault()}>{children}</a>
-);
-const AuthenticatedLayout = ({ user, header, children }) => (
-    <div className="min-h-screen bg-gray-100">
-        <nav className="bg-white shadow">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between h-16 items-center">
-                    {header}
-                    <span className="text-gray-600">Welcome, {user?.name}</span>
-                </div>
-            </div>
-        </nav>
-        <main>{children}</main>
-    </div>
-);
-
-const DesktopDashboard = ({ user, appointment, history }) => {
+const DesktopDashboard = ({ user, appointment, history, onRepairerSelect }) => {
     return (
         <AuthenticatedLayout
             user={user}
@@ -53,9 +35,11 @@ const DesktopDashboard = ({ user, appointment, history }) => {
                         <div className="lg:col-span-2 space-y-8">
                             
                             {/* REPAIRER FINDER (Dynamic Component) */}
-                            {/* ✅ Placed here to replace the static grid */}
-                            {/* Since we are on a wide screen, RepairerFinder will automatically show 2 columns */}
-                            <RepairerFinder />
+                            {/* We pass the selection handler and the grid configuration for desktop */}
+                            <RepairerFinder 
+                                onRepairerSelect={onRepairerSelect} 
+                                gridConfig="grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+                            />
                             
                             {/* SERVICE ACTIVITY */}
                             <div className="bg-white p-6 rounded-xl shadow-lg">

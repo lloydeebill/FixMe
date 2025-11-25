@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Notifications\VerifyEmail; // For custom email sender
 use Illuminate\Database\Eloquent\Relations\HasOne; // For the Repairer Profile relationship
+use App\Models\RepairerProfile;
 
 // 2. Class definition implements verification
 class User extends Authenticatable implements MustVerifyEmail
@@ -48,7 +49,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * 4. METHOD to define the repairer profile relationship (Fixes the undefined method error)
      * This makes $user->profile() available in the dashboard route.
      */
-    public function profile(): HasOne
+    public function repairerProfile(): HasOne
     {
         // Links this user to ONE RepairerProfile using the custom user_id key
         return $this->hasOne(RepairerProfile::class, 'user_id', 'user_id');

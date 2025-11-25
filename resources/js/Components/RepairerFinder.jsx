@@ -22,7 +22,8 @@ const REPAIRERS_DATA = {
 
 const CATEGORIES = ['Electrical', 'Appliances', 'Clothes', 'Plumbing'];
 
-const RepairerFinder = ({ className = "" }) => {
+// 🚨 Added 'gridConfig' prop with a smart default
+const RepairerFinder = ({ className = "", onRepairerSelect, gridConfig = "grid-cols-1 md:grid-cols-2" }) => {
     const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
     const activeRepairers = REPAIRERS_DATA[activeCategory] || [];
 
@@ -33,7 +34,6 @@ const RepairerFinder = ({ className = "" }) => {
     );
 
     return (
-        // Wrapper div allows passing extra classes (like margins) from parent
         <div className={`bg-white p-6 rounded-xl shadow-lg border border-gray-100 ${className}`}>
             <div className="mb-4">
                 <h2 className="text-xl font-bold text-gray-800 mb-1">Book a Repairer</h2>
@@ -57,14 +57,15 @@ const RepairerFinder = ({ className = "" }) => {
                 ))}
             </div>
 
-            {/* --- Repairer Grid (Responsive) --- */}
-            {/* Mobile: 1 column (grid-cols-1) */}
-            {/* Desktop: 2 columns (lg:grid-cols-2) - Only triggers if screen is wide enough */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+            {/* --- Repairer Grid --- */}
+            {/* 🚨 We use the dynamic 'gridConfig' prop here */}
+            <div className={`grid gap-4 pt-2 ${gridConfig}`}>
                 {activeRepairers.length > 0 ? (
                     activeRepairers.map((repairer) => (
                         <div 
                             key={repairer.id} 
+                            // Main card click
+                            onClick={() => onRepairerSelect && onRepairerSelect(repairer)}
                             className="flex items-center justify-between bg-gray-50 p-4 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md transition group cursor-pointer"
                         >
                             <div className="flex items-center gap-3 overflow-hidden">
@@ -83,9 +84,16 @@ const RepairerFinder = ({ className = "" }) => {
                                 </div>
                             </div>
                             
-                            <div className="text-gray-300 group-hover:text-blue-600 transition">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            </div>
+                            <button 
+                                // Explicitly attach handler to button as well to be safe, preventing propagation issues
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Prevent double-firing if parent also fires
+                                    onRepairerSelect && onRepairerSelect(repairer);
+                                }}
+                                className="bg-blue-100 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold group-hover:bg-blue-600 group-hover:text-white transition"
+                            >
+                                Book
+                            </button>
                         </div>
                     ))
                 ) : (

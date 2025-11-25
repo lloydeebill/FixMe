@@ -12,10 +12,10 @@ class RepairerProfile extends Model
 
     protected $primaryKey = 'repairer_id';
 
-    // The table name is set implicitly as 'repairer_profiles'
 
     protected $fillable = [
         'user_id',
+        'business_name',
         'focus_area',
         'bio',
         'rating',

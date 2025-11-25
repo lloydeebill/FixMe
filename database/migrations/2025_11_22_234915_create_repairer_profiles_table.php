@@ -19,6 +19,7 @@ return new class extends Migration
             // 3. Set the Foreign Key Constraint
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
 
+            $table->string('business_name')->nullable();
             $table->string('focus_area', 100);
             $table->text('bio')->nullable();
 

@@ -35,8 +35,7 @@ const renderIcon = (type, className) => {
     }
 };
 
-const MobileDashboard = ({ user, appointment, quickAccess, history }) => {
-    
+const MobileDashboard = ({ user, appointment, quickAccess, history, onRepairerSelect }) => {    
     // Ensure quickAccess is an array before mapping
     const quickAccessArray = Array.isArray(quickAccess) ? quickAccess : [];
     
@@ -129,7 +128,9 @@ const MobileDashboard = ({ user, appointment, quickAccess, history }) => {
                         </div>
                     </div>
                 </div>
-                <div><RepairerFinder/></div>
+                <div>
+                    <RepairerFinder onRepairerSelect={onRepairerSelect} />
+                </div>
             </main>
         </div>
     );

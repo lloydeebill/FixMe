@@ -11,13 +11,11 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 // -----------------------------------------------------------
-// 1. PUBLIC FACING PAGES (LANDING, LOGIN, REGISTER)
+// 1. PUBLIC FACING PAGES
 // -----------------------------------------------------------
 
-// Root URL: Still uses LandingController to decide Mobile vs Desktop Landing
 Route::get('/', [LandingController::class, 'index'])->name('home');
 
 Route::get('/login', function () {
@@ -26,7 +24,6 @@ Route::get('/login', function () {
   ]);
 })->name('login');
 
-// /signup URL hits a different method to decide: MobileRegister or Desktop Register.
 Route::get('/signup', [LandingController::class, 'indexRegister'])->name('register');
 
 // --- Auth Logic (POST) ---
@@ -71,20 +68,38 @@ Route::get('/email/verify/{id}/{hash}', function (Request $request) {
 Route::middleware(['auth'])->group(function () {
 
   /**
-   * @param \App\Models\User $user
-   * @return \Inertia\Response
+   * DASHBOARD
    */
   Route::get('/dashboard', function () {
+    /** @var \App\Models\User $user */
     $user = Auth::user();
+
+    $user->load('repairerProfile');
+
     return Inertia::render('Dashboard', [
       'isRepairer' => (bool) $user->isRepairer,
-      'profileExists' => $user->profile()->exists(),
-      'profile' => $user->profile,
+
+      // 🚨 FIX: Changed 'profile' to 'repairerProfile' to match User.php
+      'profileExists' => $user->repairerProfile()->exists(),
+      'profile' => $user->repairerProfile,
     ]);
   })->name('dashboard');
 
+  /**
+   * SETTINGS (We added this earlier)
+   */
+  Route::get('/settings', function () {
+    return Inertia::render('Settings');
+  })->name('settings');
+
   Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
-  // Repairer Application POST Route
-  Route::post('/repairer/apply', [RepairerController::class, 'store'])->name('repairer.apply');
+  /**
+   * REPAIRER REGISTRATION
+   */
+  // 1. GET: Show the Registration Form (We missed this earlier!)
+  Route::get('/become-repairer', [RepairerController::class, 'create'])->name('repairer.create');
+
+  // 2. POST: Submit the form (I removed the duplicate line you had)
+  Route::post('/repairer/apply', [RepairerController::class, 'store'])->name('repairer.store');
 });
