@@ -22,6 +22,6 @@ class AppServiceProvider extends ServiceProvider
     {
         // Force HTTPS on everything. 
         // We removed the 'if' check because Railway might not be reporting 'production' correctly yet.
-        URL::forceScheme('https');
+
     }
 }
