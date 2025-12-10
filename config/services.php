@@ -42,8 +42,5 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URL'),
     ],
 
-    'brevo' => [
-        'key' => env('BREVO_KEY'),
-    ],
 
 ];

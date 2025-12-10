@@ -60,9 +60,6 @@ return [
             //     'timeout' => 5,
             // ],
         ],
-        'brevo' => [
-            'transport' => 'brevo',
-        ],
 
         'resend' => [
             'transport' => 'resend',
