@@ -17,7 +17,38 @@ class DashboardController extends Controller
         // 1. Load Relationship for "Switch to Work Mode"
         $user->load('repairerProfile');
 
-        // 2. Fetch Real Repairers
+        // --- NEW LOGIC: PREPARE REPAIRER DATA ---
+        $schedule = [];
+        $isGoogleConnected = false;
+
+        // Only fetch this if they actually have a repairer profile
+        if ($user->repairerProfile) {
+
+            // A. Check Google Calendar Status (True if token exists)
+            $isGoogleConnected = !empty($user->google_refresh_token);
+
+            // B. Fetch Availability Schedule
+            // We use the relationship we defined earlier
+            $schedule = $user->repairerProfile->availabilities()
+                ->orderBy('day_of_week', 'asc')
+                ->get();
+
+            // C. Fallback: If they haven't set a schedule yet, send a default one (Mon-Sun, Offline)
+            if ($schedule->isEmpty()) {
+                $schedule = collect(range(0, 6))->map(function ($day) {
+                    return [
+                        'day_of_week' => $day,
+                        'start_time' => '09:00',
+                        'end_time' => '17:00',
+                        'is_active' => false,
+                    ];
+                });
+            }
+        }
+        // ----------------------------------------
+
+
+        // 2. Fetch Real Repairers (For Customer View)
         $topServices = RepairerProfile::with('user')
             ->latest()
             ->take(6)
@@ -44,8 +75,14 @@ class DashboardController extends Controller
         // 4. Return to React
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
-            'isRepairer' => $user->isRepairer ?? false,
+            'isRepairer' => $user->isRepairer ?? false, // Ensure your User model has this accessor or check profile existence
             'profile' => $user->repairerProfile,
+
+            // --- PASS THE NEW DATA ---
+            'schedule' => $schedule,
+            'isGoogleConnected' => $isGoogleConnected,
+            // -------------------------
+
             'appointment' => null,
             'quickAccess' => $quickAccess,
             'history' => $history,
