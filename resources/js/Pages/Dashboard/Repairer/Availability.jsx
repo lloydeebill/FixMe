@@ -1,7 +1,7 @@
 import React from 'react';
 import { useForm, Head } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout'; // Assuming you use the default layout
-import PrimaryButton from '@/Components/PrimaryButton'; // Adjust based on your components
+import PrimaryButton from '@/Components/PrimaryButton';
 
 const DAYS_OF_WEEK = [
     'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
