@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title inertia>{{ config('app.name', 'Fix Me') }}</title>
 
-  <!-- Load CSS and React -->
+
   @vite(['resources/css/app.css', 'resources/js/app.jsx'])
 
   @inertiaHead

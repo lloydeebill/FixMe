@@ -11,6 +11,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\OnboardingController;
+use App\Http\Middleware\EnsureOnboardingComplete; // Keeps your custom middleware
+use App\Http\Middleware\EnsureEmailIsVerified;
 
 // -----------------------------------------------------------
 // 1. PUBLIC FACING PAGES
@@ -35,7 +38,7 @@ Route::get('/auth/google', [GoogleLoginController::class, 'redirectToGoogle'])->
 Route::get('/auth/google/callback', [GoogleLoginController::class, 'handleGoogleCallback'])->name('google.callback');
 
 // -----------------------------------------------------------
-// 2. EMAIL VERIFICATION PAGES
+// 2. EMAIL VERIFICATION PAGES (KEPT EXACTLY AS IS)
 // -----------------------------------------------------------
 
 Route::middleware(['auth'])->group(function () {
@@ -62,44 +65,63 @@ Route::get('/email/verify/{id}/{hash}', function (Request $request) {
 })->middleware(['signed'])->name('verification.verify');
 
 // -----------------------------------------------------------
-// 3. PROTECTED APPLICATION ROUTES (FUNCTIONAL HUB)
+// 3. PROTECTED APPLICATION ROUTES
 // -----------------------------------------------------------
 
 Route::middleware(['auth'])->group(function () {
 
-  /**
-   * DASHBOARD
-   */
-  Route::get('/dashboard', function () {
-    /** @var \App\Models\User $user */
-    $user = Auth::user();
+  // --- A. NEW ONBOARDING ROUTES (UNIFIED) ---
+  // 🛑 CHANGE: We replaced the 3-step routes with these 2 routes
+  Route::prefix('onboarding')
+    ->middleware(['verified', 'throttle:6,1'])
+    ->group(function () {
 
-    $user->load('repairerProfile');
+      // 1. The Single Form (GET)
+      Route::get('/', [OnboardingController::class, 'showForm'])
+        ->name('onboarding.profile');
 
-    return Inertia::render('Dashboard', [
-      'isRepairer' => (bool) $user->isRepairer,
+      // 2. The Save Action (POST)
+      // This handles Profile + Role + Repairer Details all at once
+      Route::post('/complete', [OnboardingController::class, 'store'])
+        ->name('onboarding.complete.store');
+    });
 
-      // 🚨 FIX: Changed 'profile' to 'repairerProfile' to match User.php
-      'profileExists' => $user->repairerProfile()->exists(),
-      'profile' => $user->repairerProfile,
-    ]);
-  })->name('dashboard');
-
-  /**
-   * SETTINGS (We added this earlier)
-   */
-  Route::get('/settings', function () {
-    return Inertia::render('Settings');
-  })->name('settings');
-
+  // 1b. LOGOUT
   Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
-  /**
-   * REPAIRER REGISTRATION
-   */
-  // 1. GET: Show the Registration Form (We missed this earlier!)
-  Route::get('/become-repairer', [RepairerController::class, 'create'])->name('repairer.create');
 
-  // 2. POST: Submit the form (I removed the duplicate line you had)
-  Route::post('/repairer/apply', [RepairerController::class, 'store'])->name('repairer.store');
+  // ----------------------------------------------------------------------
+  // 2. DASHBOARD & SETTINGS (Requires Onboarding to be Done)
+  // ----------------------------------------------------------------------
+  Route::middleware([EnsureOnboardingComplete::class])->group(function () {
+
+    /**
+     * DASHBOARD
+     */
+    Route::get('/dashboard', function (Request $request) {
+      /** @var \App\Models\User $user */
+      $user = Auth::user();
+
+      // Eager load the profile if they are a repairer
+      $user->load('repairerProfile');
+
+      return Inertia::render('Dashboard', [
+        'isRepairer' => $user->isRepairer ?? false,
+        'profile' => $user->isRepairer ? $user->repairerProfile : null,
+      ]);
+    })->name('dashboard');
+
+    /**
+     * SETTINGS
+     */
+    Route::get('/settings', function () {
+      return Inertia::render('Settings');
+    })->name('settings');
+
+    /**
+     * REPAIRER REGISTRATION (Future "Add Service" Path)
+     */
+    Route::get('/become-repairer', [RepairerController::class, 'create'])->name('repairer.create');
+    Route::post('/repairer/apply', [RepairerController::class, 'store'])->name('repairer.store');
+  });
 });

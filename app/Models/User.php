@@ -23,6 +23,10 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'isRepairer',
+        // 🛑 ADD THESE FIELDS FROM STEP 1 PROFILE SETUP:
+        'gender',
+        'location',
+        'date_of_birth',
     ];
 
     protected $hidden = [
@@ -53,5 +57,47 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         // Links this user to ONE RepairerProfile using the custom user_id key
         return $this->hasOne(RepairerProfile::class, 'user_id', 'user_id');
+    }
+
+    // --- ONBOARDING STATUS METHODS ---
+
+    public function profileIsComplete(): bool
+    {
+        // STEP 1 CHECK: Check if the required fields from the first onboarding step (saveProfile) are set.
+        // Assuming 'gender' and 'location' are mandatory fields set in Step 1.
+        return $this->gender !== null && $this->location !== null;
+    }
+
+    public function roleIsSelected(): bool
+    {
+        // STEP 2 CHECK: Check if the role selection has occurred.
+        // The 'isRepairer' field is set to either true or false in this step.
+        // If it's still null, the role selection hasn't happened.
+        // NOTE: You must add 'gender' and 'location' to your $fillable array if they are not there!
+        return $this->isRepairer !== null;
+    }
+
+    public function repairerDetailsAreComplete(): bool
+    {
+        // STEP 3 CHECK: Check if the Repairer Profile is complete.
+
+        // If the user is NOT a repairer, this step is automatically complete for them.
+        if (!$this->isRepairer) {
+            return true;
+        }
+
+        // If the user IS a repairer, check if the RepairerProfile exists AND has data.
+        // The profile is created with defaults in saveRole, so we must check for the actual updated value.
+        $profile = $this->repairerProfile;
+
+        if ($profile) {
+            // Check for a key field that is only set in the final step (saveRepairerDetails)
+            return $profile->business_name !== null &&
+                $profile->focus_area !== null &&
+                $profile->business_name !== $this->name . ' Repairs'; // Check against the default value set in saveRole
+        }
+
+        // The profile record doesn't even exist yet (this usually means Step 2 failed)
+        return false;
     }
 }
