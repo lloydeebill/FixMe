@@ -1,5 +1,5 @@
 import './bootstrap';
-import '../css/app.css';
+import '../css/app.css'; // <--- This line connects your CSS!
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { createInertiaApp } from '@inertiajs/react';
