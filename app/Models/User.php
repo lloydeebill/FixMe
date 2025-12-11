@@ -100,4 +100,12 @@ class User extends Authenticatable implements MustVerifyEmail
         // The profile record doesn't even exist yet (this usually means Step 2 failed)
         return false;
     }
+
+    // app/Models/User.php
+
+    // 1. Relationship: A User (Customer) has many Bookings
+    public function bookingsAsCustomer()
+    {
+        return $this->hasMany(Booking::class, 'customer_id', 'user_id');
+    }
 }

@@ -12,8 +12,10 @@ use Illuminate\Http\Request;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\OnboardingController;
-use App\Http\Middleware\EnsureOnboardingComplete; // Keeps your custom middleware
+use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Middleware\EnsureEmailIsVerified;
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\DashboardController;
 
 // -----------------------------------------------------------
 // 1. PUBLIC FACING PAGES
@@ -38,7 +40,7 @@ Route::get('/auth/google', [GoogleLoginController::class, 'redirectToGoogle'])->
 Route::get('/auth/google/callback', [GoogleLoginController::class, 'handleGoogleCallback'])->name('google.callback');
 
 // -----------------------------------------------------------
-// 2. EMAIL VERIFICATION PAGES (KEPT EXACTLY AS IS)
+// 2. EMAIL VERIFICATION PAGES
 // -----------------------------------------------------------
 
 Route::middleware(['auth'])->group(function () {
@@ -65,23 +67,20 @@ Route::get('/email/verify/{id}/{hash}', function (Request $request) {
 })->middleware(['signed'])->name('verification.verify');
 
 // -----------------------------------------------------------
-// 3. PROTECTED APPLICATION ROUTES
+// 3. PROTECTED APPLICATION ROUTESfunction
 // -----------------------------------------------------------
 
 Route::middleware(['auth'])->group(function () {
 
-  // --- A. NEW ONBOARDING ROUTES (UNIFIED) ---
-  // 🛑 CHANGE: We replaced the 3-step routes with these 2 routes
+  // --- A. ONBOARDING ROUTES ---
   Route::prefix('onboarding')
     ->middleware(['verified', 'throttle:6,1'])
     ->group(function () {
-
       // 1. The Single Form (GET)
       Route::get('/', [OnboardingController::class, 'showForm'])
         ->name('onboarding.profile');
 
       // 2. The Save Action (POST)
-      // This handles Profile + Role + Repairer Details all at once
       Route::post('/complete', [OnboardingController::class, 'store'])
         ->name('onboarding.complete.store');
     });
@@ -89,27 +88,21 @@ Route::middleware(['auth'])->group(function () {
   // 1b. LOGOUT
   Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
-
   // ----------------------------------------------------------------------
-  // 2. DASHBOARD & SETTINGS (Requires Onboarding to be Done)
+  // 2. DASHBOARD & FUNCTIONAL ROUTES (Requires Onboarding to be Done)
   // ----------------------------------------------------------------------
   Route::middleware([EnsureOnboardingComplete::class])->group(function () {
 
     /**
      * DASHBOARD
+     * ✅ FIX: Moved inside this group and pointing to the Controller
      */
-    Route::get('/dashboard', function (Request $request) {
-      /** @var \App\Models\User $user */
-      $user = Auth::user();
-
-      // Eager load the profile if they are a repairer
-      $user->load('repairerProfile');
-
-      return Inertia::render('Dashboard', [
-        'isRepairer' => $user->isRepairer ?? false,
-        'profile' => $user->isRepairer ? $user->repairerProfile : null,
-      ]);
-    })->name('dashboard');
+    Route::get('/app', [DashboardController::class, 'index'])->name('dashboard');
+    /**
+     * BOOKINGS
+     * ✅ FIX: Added inside this group so only onboarded users can book
+     */
+    Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
 
     /**
      * SETTINGS
@@ -119,9 +112,10 @@ Route::middleware(['auth'])->group(function () {
     })->name('settings');
 
     /**
-     * REPAIRER REGISTRATION (Future "Add Service" Path)
+     * REPAIRER REGISTRATION
      */
     Route::get('/become-repairer', [RepairerController::class, 'create'])->name('repairer.create');
     Route::post('/repairer/apply', [RepairerController::class, 'store'])->name('repairer.store');
-  });
-});
+  }); // End OnboardingComplete Group
+
+}); // End Auth Group

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
+import RepairerFormFields from '@/Components/RepairerFormFields';
 
 export default function OnboardingProfile({ auth }) {
     // STATE: Tracks which step the user is on (1, 2, or 3)
@@ -185,7 +186,7 @@ export default function OnboardingProfile({ auth }) {
                                     className={`w-full py-3 px-4 text-white font-bold rounded-lg shadow-md transition-transform transform active:scale-95 disabled:opacity-50 ${data.is_repairer ? 'bg-gray-800 hover:bg-gray-900' : 'bg-blue-600 hover:bg-blue-700'}`}
                                 >
                                     {/* Text changes based on role */}
-                                    {data.is_repairer ? 'Next: Business Details &rarr;' : 'Finish Setup'}
+                                    {data.is_repairer ? 'Next' : 'Finish Setup'}
                                 </button>
                             </div>
                         </form>
@@ -206,56 +207,22 @@ export default function OnboardingProfile({ auth }) {
                         </div>
 
                         <form onSubmit={handleFinalSubmit} className="space-y-5">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Business Name (Optional)</label>
-                                <input
-                                    type="text"
-                                    value={data.business_name}
-                                    onChange={(e) => setData('business_name', e.target.value)}
-                                    placeholder="e.g. Lloyd's Repair Shop"
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Main Skill / Focus Area</label>
-                                <select
-                                    value={data.focus_area}
-                                    onChange={(e) => setData('focus_area', e.target.value)}
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500"
-                                    required
-                                >
-                                    <option value="" disabled>Select Expertise...</option>
-                                    <option value="Electrical">Electrical</option>
-                                    <option value="Plumbing">Plumbing</option>
-                                    <option value="Carpentry">Carpentry</option>
-                                    <option value="Appliances">Appliances</option>
-                                    <option value="Computer">Computer/IT</option>
-                                </select>
-                                {errors.focus_area && <p className="text-red-500 text-xs mt-1">{errors.focus_area}</p>}
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">Short Bio</label>
-                                <textarea
-                                    value={data.bio}
-                                    onChange={(e) => setData('bio', e.target.value)}
-                                    rows="3"
-                                    placeholder="Describe your experience, certifications, or services..."
-                                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-green-500 focus:border-green-500"
-                                ></textarea>
-                            </div>
+            
+                            {/* REPLACE THE OLD INPUTS WITH THIS: */}
+                            <RepairerFormFields 
+                                data={data} 
+                                setData={setData} 
+                                errors={errors} 
+                            />
 
                             <div className="pt-4">
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="w-full py-3 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-md transition-transform transform active:scale-95 disabled:opacity-50"
-                                >
-                                    {processing ? 'Saving...' : 'Complete Registration'}
+                                <button type="submit">
+                                Complete Registration
                                 </button>
                             </div>
                         </form>
+
+                       
                     </div>
                 )}
 

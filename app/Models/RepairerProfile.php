@@ -37,4 +37,11 @@ class RepairerProfile extends Model
     {
         return $this->belongsToMany(Skill::class, 'repairer_skill', 'repairer_profile_id', 'skill_id');
     }
+
+    // app/Models/RepairerProfile.php
+
+    public function bookingsAsRepairer()
+    {
+        return $this->hasMany(Booking::class, 'repairer_id', 'repairer_id');
+    }
 }
