@@ -1,137 +1,164 @@
 import React from 'react';
-import RepairerFinder from '../../Components/RepairerFinder';
 
-// Mocks for preview (replace with real Inertia imports in your project)
 const Link = ({ href, className, children }) => (
     <a href={href} className={className} onClick={(e) => e.preventDefault()}>{children}</a>
 );
 
-// Helper function to render icons (using SVGs)
-const renderIcon = (type, className) => {
+// Helper for Category Icons
+const renderCategoryIcon = (type) => {
+    const iconClass = "w-8 h-8 text-[#1b6ed1]"; 
     switch (type) {
+        case 'repairer':
+            return <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>;
+        case 'cleaning':
+             return <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>;
+        case 'plumbing':
+            return <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>; 
         case 'electrical':
-            // Lightning/Energy Icon for Electrical
-            return (
-                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-            );
-        case 'carpentry':
-            // Hammer/Tool Icon for Carpentry
-            return (
-                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            );
-        case 'seamstress':
-            // Needle/Stitch Icon for Seamstress
-            return (
-                <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-            );
+             return <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>;
         default:
-            return null;
+             return <div className="w-8 h-8 bg-gray-200 rounded-full"></div>;
     }
 };
 
-const MobileDashboard = ({ user, appointment, quickAccess, history, onRepairerSelect }) => {    
-    // Ensure quickAccess is an array before mapping
-    const quickAccessArray = Array.isArray(quickAccess) ? quickAccess : [];
+// 🛑 1. ADD 'topServices' TO PROPS
+const MobileDashboard = ({ user, appointment, onRepairerSelect, topServices }) => {
     
-    return (
-        <div className="min-h-screen bg-gray-50 font-sans pb-24">
-            {/* Header Section: User Greeting and Notification Icon */}
-            <header className="flex justify-between items-center p-6 bg-white rounded-b-3xl shadow-sm sticky top-0 z-10">
-                <div className="flex items-center gap-3">
-                    {/* User Profile Placeholder Icon */}
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center text-gray-400">
-                         <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p className="text-sm text-gray-500">Hello,</p>
-                        <h1 className="text-xl font-bold text-gray-900">{user?.name || 'Guest'}</h1>
-                    </div>
-                </div>
-                <button className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition">
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                </button>
-            </header>
+    // Categories Data (Static for navigation)
+    const categories = [
+        { name: 'Repairer', type: 'repairer' },
+        { name: 'Cleaning', type: 'cleaning' },
+        { name: 'Plumbing', type: 'plumbing' },
+        { name: 'Electrical', type: 'electrical' },
+    ];
 
-            <main className="px-6 mt-6 space-y-8">
-                {/* Quick Access Repair Section */}
-                <div>
-                    <h2 className="text-lg font-bold text-gray-800 mb-4">Quick Access Repair</h2>
-                    <div className="grid grid-cols-3 gap-4">
-                        {quickAccessArray.map((item, index) => (
-                            <Link 
-                                href="#" 
-                                key={index} 
-                                className={`flex flex-col items-center justify-center p-4 rounded-3xl ${item.color} aspect-square shadow-sm transition transform active:scale-95`}
-                            >
-                                <div className={`mb-2 ${item.textColor}`}>
-                                    {renderIcon(item.iconType, "w-8 h-8")}
+    // 🛑 2. REMOVED THE HARDCODED 'const topServices = [...]' 
+    // We now use the 'topServices' passed from the Laravel Controller.
+
+    return (
+        <div className="min-h-screen bg-gray-50 font-sans flex flex-col relative pb-20">
+            
+            {/* 1. TOP HEADER SECTION */}
+            <div className="bg-[#1b6ed1] pt-12 pb-8 px-6 rounded-b-[30px] shadow-sm transition-all duration-300">
+                <div className="flex justify-between items-start mb-6 text-white">
+                    {appointment?.exists ? (
+                        <div className="flex items-center gap-3 animate-fade-in-right">
+                            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                                <svg className="w-6 h-6 text-[#ffde59]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-xs text-blue-100 opacity-90">{appointment.type} by {appointment.repairer}</p>
+                                <div className="flex items-center gap-1">
+                                    <span className="font-bold text-base leading-tight">{appointment.time}, {appointment.day} {appointment.month}</span>
                                 </div>
-                                <span className="text-xs font-bold text-gray-700">{item.name}</span>
-                            </Link>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-3 animate-fade-in-right">
+                            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p className="text-xs text-blue-100 opacity-90">Hello, {user?.name || 'Guest'}</p>
+                                <div className="flex items-center gap-1">
+                                    <span className="font-bold text-lg leading-tight">You need fixing?</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <button className="relative p-2">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                        <span className="absolute top-1 right-2 w-2 h-2 bg-[#ffde59] rounded-full border border-[#1b6ed1]"></span>
+                    </button>
+                </div>
+
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+                    <input type="text" placeholder="Search service..." className="w-full py-3.5 pl-12 pr-10 bg-white text-gray-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ffde59] shadow-sm placeholder-gray-400 text-sm" />
+                </div>
+            </div>
+
+            {/* 2. MAIN CONTENT AREA */}
+            <div className="flex-1 px-6 pt-6 pb-20 overflow-y-auto">
+                <div className="mb-8">
+                    <div className="flex justify-between items-end mb-4">
+                        <h2 className="text-lg font-bold text-gray-900">Browse by Categories</h2>
+                        <a href="#" className="text-xs font-semibold text-[#1b6ed1] hover:text-blue-700">See All</a>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                        {categories.map((cat, index) => (
+                            <div key={index} className="flex flex-col items-center gap-2">
+                                <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer shadow-sm shadow-blue-100/50">
+                                    {renderCategoryIcon(cat.type)}
+                                </div>
+                                <span className="text-xs font-medium text-gray-600">{cat.name}</span>
+                            </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Upcoming Appointment Section */}
-                {appointment?.exists && (
-                    <div>
-                        <h2 className="text-lg font-bold text-gray-800 mb-4">Next appointment</h2>
-                        <div className="bg-green-600 text-white rounded-3xl flex overflow-hidden shadow-lg h-24 relative">
-                            <div className="absolute right-0 top-0 h-full w-1/2 bg-white/5 skew-x-12 origin-bottom-left"></div>
-                            
-                            {/* Date Block */}
-                            <div className="bg-green-700 w-20 flex flex-col items-center justify-center shrink-0 z-10">
-                                <span className="text-xl font-bold">{appointment.day}</span>
-                                <span className="text-xs uppercase tracking-wider opacity-80">{appointment.month}</span>
-                            </div>
-                            
-                            {/* Details Block */}
-                            <div className="flex-1 p-4 flex flex-col justify-center z-10">
-                                <p className="font-bold text-sm truncate">
-                                    {appointment.time}, {appointment.repairer}
-                                </p>
-                                <div className="flex items-center mt-1">
-                                    <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded text-white">
-                                        {appointment.type}
-                                    </span>
-                                </div>
-                                <p className="text-xs opacity-70 mt-1 truncate underline decoration-green-400/50">
-                                    {appointment.link}
-                                </p>
-                            </div>
-                        </div>
+                {/* Top Services - NOW USING REAL DATA */}
+                <div>
+                    <div className="flex justify-between items-end mb-4">
+                         <h2 className="text-lg font-bold text-gray-900">Top services</h2>
+                         <a href="#" className="text-xs font-semibold text-[#1b6ed1] hover:text-blue-700">See All</a>
                     </div>
-                )}
 
-                {/* History / Stats Section */}
-                <div>
-                    <h2 className="text-lg font-bold text-gray-800 mb-4">Activity</h2>
-                    <div className="bg-blue-50 rounded-3xl p-5 flex items-center gap-4 shadow-sm">
-                        <div className="bg-white p-3 rounded-full shadow-sm text-blue-600">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 00-2 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-gray-800 text-sm">{history?.lastJob}</h3>
-                            <p className="text-xs text-gray-500">{history?.count} completed jobs</p>
-                        </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {/* 🛑 CHECK IF DATA EXISTS BEFORE MAPPING */}
+                        {topServices && topServices.length > 0 ? (
+                            topServices.map((service, index) => (
+                                <div key={index} onClick={() => onRepairerSelect(service)} className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-2 hover:shadow-md transition-shadow cursor-pointer">
+                                    <div className="h-28 w-full rounded-xl overflow-hidden bg-gray-100 relative">
+                                        <img src={service.image} alt={service.role} className="w-full h-full object-cover" />
+                                        <div className="absolute inset-0 border-2 border-transparent hover:border-[#ffde59] rounded-xl transition-colors"></div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <h3 className="font-bold text-sm text-gray-900 truncate">{service.role}</h3>
+                                            <div className="flex items-center text-xs font-bold bg-yellow-50 text-gray-700 px-1.5 py-0.5 rounded border border-yellow-100">
+                                                <span className="text-[#ffde59] mr-0.5">★</span> {service.rating}
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 truncate">{service.name}</p>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="col-span-2 text-center text-gray-500 text-sm py-4">
+                                No repairers found. Try registering one!
+                            </div>
+                        )}
                     </div>
                 </div>
-                <div>
-                    <RepairerFinder onRepairerSelect={onRepairerSelect} />
+            </div>
+
+            {/* 3. BOTTOM NAVIGATION */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 py-3 px-6 pb-6 flex justify-between items-center z-50 rounded-t-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <div className="flex flex-col items-center gap-1 text-[#1b6ed1] cursor-pointer">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                    <span className="text-[10px] font-medium">Home</span>
                 </div>
-            </main>
+                <div className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#1b6ed1] cursor-pointer transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    <span className="text-[10px] font-medium">Bookings</span>
+                </div>
+                 <div className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#1b6ed1] cursor-pointer transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                    <span className="text-[10px] font-medium">Chat</span>
+                </div>
+                 <div className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#1b6ed1] cursor-pointer transition-colors">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    <span className="text-[10px] font-medium">Profile</span>
+                </div>
+            </div>
         </div>
     );
 };

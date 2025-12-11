@@ -1,57 +1,50 @@
 import React, { useState } from 'react';
 
-const BookingModal = ({ repairer, onClose, onConfirm }) => {
+export default function BookingModal({ repairer, onClose, onConfirm }) {
+    // 1. STATE for the inputs
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
-    const [issue, setIssue] = useState('');
+    const [notes, setNotes] = useState(''); // <--- MAKE SURE THIS EXISTS
 
     if (!repairer) return null;
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // Pass the booking details back to the parent
-        onConfirm({ ...repairer, date, time, issue });
+        // 2. PASS 'notes' TO THE PARENT
+        onConfirm({ 
+            date, 
+            time, 
+            notes // <--- THIS WAS LIKELY MISSING OR NAMED WRONG
+        });
+        
+        // Reset form
+        setNotes('');
+        setDate('');
+        setTime('');
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm transition-opacity">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-up">
                 
-                {/* Header with Repairer Info */}
-                <div className="bg-blue-600 p-6 text-white">
-                    <div className="flex justify-between items-start">
-                        <h2 className="text-2xl font-bold">Book Appointment</h2>
-                        <button onClick={onClose} className="text-white/80 hover:text-white">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                    <div className="mt-4 flex items-center gap-3">
-                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-xl font-bold">
-                            {repairer.name.charAt(0)}
-                        </div>
-                        <div>
-                            <p className="font-semibold text-lg">{repairer.name}</p>
-                            <p className="text-blue-100 text-sm flex items-center">
-                                <span className="text-yellow-300 mr-1">★ {repairer.rating}</span> 
-                                • {repairer.status}
-                            </p>
-                        </div>
-                    </div>
+                {/* Header */}
+                <div className="bg-blue-600 p-4 text-white flex justify-between items-center">
+                    <h2 className="text-lg font-bold">Book {repairer.name}</h2>
+                    <button onClick={onClose} className="text-white/80 hover:text-white">&times;</button>
                 </div>
 
-                {/* Booking Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     
-                    {/* Date & Time Row */}
+                    {/* Date & Time Inputs */}
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                             <input 
                                 type="date" 
                                 required
-                                className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                                 value={date}
                                 onChange={(e) => setDate(e.target.value)}
+                                className="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                             />
                         </div>
                         <div>
@@ -59,37 +52,37 @@ const BookingModal = ({ repairer, onClose, onConfirm }) => {
                             <input 
                                 type="time" 
                                 required
-                                className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                                 value={time}
                                 onChange={(e) => setTime(e.target.value)}
+                                className="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                             />
                         </div>
                     </div>
 
-                    {/* Issue Description */}
+                    {/* 3. THE PROBLEM DESCRIPTION INPUT */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">What's the problem?</label>
                         <textarea 
                             rows="3"
-                            placeholder="Briefly describe the repair needed..."
-                            className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                            value={issue}
-                            onChange={(e) => setIssue(e.target.value)}
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)} // <--- CRITICAL: Updates the state
+                            placeholder="e.g. My sink is leaking..."
+                            className="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500"
                         ></textarea>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="pt-2 flex gap-3">
+                    {/* Actions */}
+                    <div className="flex gap-3 pt-2">
                         <button 
                             type="button" 
                             onClick={onClose}
-                            className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition"
+                            className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50"
                         >
                             Cancel
                         </button>
                         <button 
                             type="submit"
-                            className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition transform active:scale-95"
+                            className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200"
                         >
                             Confirm Booking
                         </button>
@@ -98,6 +91,4 @@ const BookingModal = ({ repairer, onClose, onConfirm }) => {
             </div>
         </div>
     );
-};
-
-export default BookingModal;
+}
