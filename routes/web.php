@@ -13,9 +13,10 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Middleware\EnsureOnboardingComplete;
-use App\Http\Middleware\EnsureEmailIsVerified;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\RepairerAvailabilityController;
+use App\Http\Controllers\GoogleCalendarController;
 
 // -----------------------------------------------------------
 // 1. PUBLIC FACING PAGES
@@ -84,6 +85,20 @@ Route::middleware(['auth'])->group(function () {
       Route::post('/complete', [OnboardingController::class, 'store'])
         ->name('onboarding.complete.store');
     });
+
+
+  Route::get('/auth/calendar/connect', [GoogleCalendarController::class, 'connect'])
+    ->name('calendar.connect');
+
+  // 2. The Return: Google sends them back here with the "Key"
+  Route::get('/auth/calendar/callback', [GoogleCalendarController::class, 'callback'])
+    ->name('calendar.callback');
+
+
+  Route::get('/repairer/availability', [RepairerAvailabilityController::class, 'edit'])->name('availability.edit');
+  Route::put('/repairer/availability', [RepairerAvailabilityController::class, 'update'])->name('availability.update');
+
+
 
   // 1b. LOGOUT
   Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');

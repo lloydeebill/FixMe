@@ -44,4 +44,10 @@ class RepairerProfile extends Model
     {
         return $this->hasMany(Booking::class, 'repairer_id', 'repairer_id');
     }
+
+    // In App\Models\RepairerProfile.php
+    public function availabilities()
+    {
+        return $this->hasMany(RepairerAvailability::class, 'repairer_profile_id', 'repairer_id');
+    }
 }
