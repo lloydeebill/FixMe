@@ -1,24 +1,23 @@
 import React, { useState } from 'react';
-import { useForm } from '@inertiajs/react'; // Import this for the form handling
+import { useForm, router } from '@inertiajs/react';
 
 export default function RepairerMobile({ 
     user, 
     profile, 
-    jobs, 
+    jobs = [], // <--- FIXED: Added default value here so it never crashes
     earnings, 
     onAccept, 
     onDecline, 
     onSwitchToCustomer,
-    // NEW PROPS needed from the backend:
     schedule = [], 
     isGoogleConnected = false 
 }) {
-    // State to toggle between "Jobs" view and "Schedule" view
-    const [activeTab, setActiveTab] = useState('jobs'); // 'jobs', 'schedule', 'profile'
+    const [activeTab, setActiveTab] = useState('jobs');
 
     // --- FORM LOGIC FOR AVAILABILITY ---
-    const { data, setData, put, processing, recentlySuccessful } = useForm({
-        schedule: schedule.length > 0 ? schedule : []
+    const { data, setData, put, processing } = useForm({
+        // Safety check: ensure schedule is an array before using .length
+        schedule: (schedule && schedule.length > 0) ? schedule : [] 
     });
 
     const updateDay = (index, field, value) => {
@@ -28,125 +27,159 @@ export default function RepairerMobile({
     };
 
     const saveSchedule = () => {
-        put(route('availability.update'), {
+        put('/repairer/availability', {
             preserveScroll: true,
+            onSuccess: () => alert('Availability Saved!')
         });
     };
 
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    // --- RENDER HELPERS ---
-    
-    // 1. The Jobs View (What you already had)
+    // --- ACTIONS ---
+    const handleApprove = (id) => {
+        router.post(`/bookings/${id}/approve`, {}, {
+            onSuccess: () => console.log("Booking approved!")
+        });
+    };
+
+    const handleReject = (id) => {
+        if (confirm('Are you sure you want to reject this job?')) {
+             router.post(`/bookings/${id}/reject`);
+        }
+    };
+
+    // --- VIEW 1: JOBS ---
     const renderJobsView = () => (
         <>
             <h2 className="text-lg font-bold text-gray-800 mb-4">Incoming Requests</h2>
-            {jobs.map(job => (
-                <div key={job.id} className="bg-white p-4 rounded-xl shadow-sm mb-4">
-                    <h3 className="font-bold">{job.type}</h3>
-                    <p className="text-sm text-gray-500">{job.desc}</p>
-                    <div className="mt-3 flex gap-2">
-                        <button onClick={() => onAccept(job.id)} className="flex-1 bg-black text-white py-2 rounded-lg text-sm font-bold">Accept</button>
+            
+            {/* Now safe because jobs defaults to [] if undefined */}
+            {jobs.filter(job => job.status === 'pending').map(job => (
+                <div key={job.id} className="bg-white p-4 rounded-xl shadow-sm mb-4 border-l-4 border-yellow-400">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <h3 className="font-bold text-gray-900">{job.service_type}</h3>
+                            <p className="text-xs text-gray-500">
+                                {new Date(job.scheduled_at).toLocaleString('en-US', { 
+                                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
+                                })}
+                            </p>
+                        </div>
+                        <span className="bg-yellow-100 text-yellow-800 text-[10px] font-bold px-2 py-1 rounded-full uppercase">
+                            Request
+                        </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-4">
+                        <span className="font-semibold">Customer:</span> {job.customer?.name || 'Guest'} <br/>
+                        <span className="font-semibold">Note:</span> {job.problem_description || 'No description'}
+                    </p>
+                    <div className="flex gap-2">
+                        <button onClick={() => handleReject(job.id)} className="flex-1 bg-white border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-50">
+                            Decline
+                        </button>
+                        <button onClick={() => handleApprove(job.id)} className="flex-1 bg-black text-white py-2 rounded-lg text-sm font-bold hover:bg-gray-800">
+                            Accept & Sync
+                        </button>
                     </div>
                 </div>
             ))}
-            {jobs.length === 0 && (
-                <div className="text-center py-10 text-gray-400">No active jobs right now.</div>
+
+            {jobs.filter(job => job.status === 'pending').length === 0 && (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                    <p className="text-sm">No new requests</p>
+                </div>
             )}
         </>
     );
 
-    // 2. The New Schedule View
+    // ... (Rest of your code remains exactly the same)
+    // --- VIEW 2: SCHEDULE ---
     const renderScheduleView = () => (
-        <div className="space-y-6">
-            
-            {/* GOOGLE CALENDAR CARD */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-bold text-gray-800">Google Calendar</h3>
-                    {isGoogleConnected && <span className="text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded">SYNCED</span>}
-                </div>
-                <p className="text-xs text-gray-500 mb-4">Sync to prevent double booking.</p>
-                
-                {!isGoogleConnected ? (
-                    <a 
-                        href="/auth/calendar/connect"// The route we created earlier
-                        className="flex items-center justify-center w-full py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50"
-                    >
-                         <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-4 h-4 mr-2" />
-                        Connect Calendar
-                    </a>
-                ) : (
-                    <div className="text-xs text-green-600 flex items-center">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        Connected to your account
+        <div className="pb-24">
+            <h2 className="text-lg font-bold text-gray-800 mb-4">Availability & Sync</h2>
+
+            {!isGoogleConnected ? (
+                <div className="bg-white p-6 rounded-xl shadow-sm mb-6 text-center">
+                    <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12.5 2C12.15 2 11.8 2.01 11.46 2.04L3 9.68V22H21V9.7L12.5 2M6 20V11.16L12.44 5.35L19 11.15V20H6M18 12V18H16V12H18M14 12V18H10V12H14M8 12V18H6V12H8Z" /></svg>
                     </div>
-                )}
-            </div>
-
-            {/* AVAILABILITY FORM */}
-            <div className="bg-white p-5 rounded-xl shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-bold text-gray-800">Weekly Hours</h3>
-                    {recentlySuccessful && <span className="text-xs text-green-600">Saved!</span>}
+                    <h3 className="font-bold text-gray-900 mb-1">Sync with Google Calendar</h3>
+                    <p className="text-xs text-gray-500 mb-4">Avoid double bookings by syncing your personal calendar.</p>
+                    <a 
+                        href="/auth/calendar/connect"
+                        className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-md hover:bg-blue-700 transition-colors"
+                    >
+                        Connect Google Calendar
+                    </a>
                 </div>
+            ) : (
+                <div className="bg-green-50 border border-green-200 p-4 rounded-xl mb-6 flex items-center gap-3">
+                    <div className="bg-green-100 p-2 rounded-full">
+                        <svg className="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                    <div>
+                        <p className="text-sm font-bold text-green-800">Calendar Connected</p>
+                        <p className="text-xs text-green-600">Your bookings sync automatically.</p>
+                    </div>
+                </div>
+            )}
 
-                <div className="space-y-4">
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-100">
+                    <h3 className="font-bold text-gray-800">Weekly Hours</h3>
+                </div>
+                <div className="divide-y divide-gray-100">
                     {data.schedule.map((day, index) => (
-                        <div key={day.day_of_week} className="flex items-center justify-between border-b border-gray-50 pb-3 last:border-0">
-                            
-                            {/* Toggle & Name */}
-                            <div className="flex items-center gap-3">
-                                <div 
-                                    onClick={() => updateDay(index, 'is_active', !day.is_active)}
-                                    className={`w-10 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors ${day.is_active ? 'bg-black' : 'bg-gray-200'}`}
-                                >
-                                    <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-300 ease-in-out ${day.is_active ? 'translate-x-4' : ''}`}></div>
-                                </div>
-                                <span className={`text-sm font-bold ${day.is_active ? 'text-gray-900' : 'text-gray-400'}`}>
+                        <div key={day.day_of_week} className="p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3 w-1/3">
+                                <input 
+                                    type="checkbox" 
+                                    checked={day.is_active}
+                                    onChange={(e) => updateDay(index, 'is_active', e.target.checked)}
+                                    className="w-5 h-5 rounded text-black focus:ring-black"
+                                />
+                                <span className={`font-medium ${day.is_active ? 'text-gray-900' : 'text-gray-400'}`}>
                                     {DAYS[day.day_of_week]}
                                 </span>
                             </div>
-
-                            {/* Time Inputs */}
+                            
                             {day.is_active ? (
-                                <div className="flex gap-1 text-sm">
+                                <div className="flex items-center gap-2">
                                     <input 
                                         type="time" 
                                         value={day.start_time}
                                         onChange={(e) => updateDay(index, 'start_time', e.target.value)}
-                                        className="border-gray-200 rounded px-1 py-0 text-xs focus:ring-0 focus:border-black"
+                                        className="bg-gray-50 border-gray-200 rounded-lg text-sm px-2 py-1"
                                     />
                                     <span className="text-gray-400">-</span>
                                     <input 
                                         type="time" 
                                         value={day.end_time}
                                         onChange={(e) => updateDay(index, 'end_time', e.target.value)}
-                                        className="border-gray-200 rounded px-1 py-0 text-xs focus:ring-0 focus:border-black"
+                                        className="bg-gray-50 border-gray-200 rounded-lg text-sm px-2 py-1"
                                     />
                                 </div>
                             ) : (
-                                <span className="text-xs text-gray-300 uppercase font-bold tracking-wide">Closed</span>
+                                <span className="text-xs text-gray-400 italic">Unavailable</span>
                             )}
                         </div>
                     ))}
                 </div>
-
-                <button 
-                    onClick={saveSchedule}
-                    disabled={processing}
-                    className="w-full mt-6 bg-black text-white py-3 rounded-xl font-bold text-sm disabled:opacity-50"
-                >
-                    {processing ? 'Saving...' : 'Update Schedule'}
-                </button>
+                <div className="p-4 bg-gray-50">
+                    <button 
+                        onClick={saveSchedule}
+                        disabled={processing}
+                        className="w-full bg-black text-white py-3 rounded-lg font-bold shadow-lg hover:bg-gray-800 disabled:opacity-50"
+                    >
+                        {processing ? 'Saving...' : 'Save Availability'}
+                    </button>
+                </div>
             </div>
         </div>
     );
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24 font-sans">
-            
-            {/* Header */}
             <header className="bg-white p-5 sticky top-0 z-10 shadow-sm rounded-b-3xl">
                  <div className="flex justify-between items-center mb-4">
                     <h1 className="text-xl font-black text-gray-800">
@@ -156,17 +189,13 @@ export default function RepairerMobile({
                  </div>
             </header>
 
-            {/* Main Content Area */}
             <main className="px-5 mt-6">
                 {activeTab === 'jobs' && renderJobsView()}
                 {activeTab === 'schedule' && renderScheduleView()}
                 {activeTab === 'profile' && <div className="text-center py-10 text-gray-400">Profile Settings (Coming Soon)</div>}
             </main>
 
-            {/* Bottom Nav */}
             <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 py-3 px-6 flex justify-between items-center text-xs font-medium text-gray-400 z-50">
-                
-                {/* TAB 1: JOBS */}
                 <button 
                     onClick={() => setActiveTab('jobs')}
                     className={`flex flex-col items-center ${activeTab === 'jobs' ? 'text-black' : 'hover:text-gray-600'}`}
@@ -175,9 +204,6 @@ export default function RepairerMobile({
                     Jobs
                 </button>
 
-                {/* TAB 2: SCHEDULE (Replaces Customer Mode in the center slot if you prefer, or add as 4th) */}
-                {/* I kept customer mode as a clear "Switch" action, and added Schedule as a main tab */}
-                
                 <button 
                     onClick={() => setActiveTab('schedule')}
                     className={`flex flex-col items-center ${activeTab === 'schedule' ? 'text-black' : 'hover:text-gray-600'}`}
@@ -186,7 +212,6 @@ export default function RepairerMobile({
                     Schedule
                 </button>
 
-                {/* TAB 3: CUSTOMER MODE SWITCH */}
                 <button 
                     onClick={onSwitchToCustomer}
                     className="flex flex-col items-center text-blue-600"
