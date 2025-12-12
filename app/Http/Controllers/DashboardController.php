@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\RepairerProfile;
-use App\Models\Booking; // <--- DON'T FORGET THIS IMPORT
+use App\Models\Booking;
 
 class DashboardController extends Controller
 {
@@ -18,12 +18,11 @@ class DashboardController extends Controller
         // 1. Load Relationship for "Switch to Work Mode"
         $user->load('repairerProfile');
 
-        // --- NEW LOGIC: PREPARE REPAIRER DATA ---
+        // --- PREPARE REPAIRER DATA ---
         $schedule = [];
+        $jobs = [];
         $isGoogleConnected = false;
-        $jobs = []; // <--- 2. INITIALIZE THE JOBS ARRAY
 
-        // Only fetch this if they actually have a repairer profile
         if ($user->repairerProfile) {
 
             // A. Check Google Calendar Status
@@ -45,15 +44,41 @@ class DashboardController extends Controller
                 });
             }
 
-            // --- THIS WAS MISSING: FETCH REAL BOOKINGS (JOBS) ---
-            $jobs = Booking::with('customer') // Assumes Booking belongsTo Customer
+            // C. FETCH JOBS (This was missing!)
+            // We fetch ALL jobs so the desktop table can show history too
+            $jobs = Booking::with('customer')
                 ->where('repairer_id', $user->repairerProfile->repairer_id)
-                ->orderBy('created_at', 'desc')
+                ->latest()
                 ->get();
-            // ----------------------------------------------------
         }
 
-        // 3. Fetch Real Repairers (For Customer View)
+        // --- PREPARE CUSTOMER DATA ---
+
+        // D. Fetch Next Appointment (For the Customer Card)
+        $nextBooking = Booking::with('repairer.user')
+            ->where('customer_id', $user->user_id)
+            ->where('status', 'confirmed')
+            ->where('scheduled_at', '>=', now())
+            ->orderBy('scheduled_at', 'asc')
+            ->first();
+
+        $appointment = null;
+
+        if ($nextBooking) {
+            $date = \Carbon\Carbon::parse($nextBooking->scheduled_at);
+
+            $appointment = [
+                'exists' => true,
+                'day' => $date->format('d'),
+                'month' => $date->format('M'),
+                'time' => $date->format('h:i A'),
+                'type' => $nextBooking->service_type,
+                'repairer' => $nextBooking->repairer->user->name ?? 'Repairer',
+                'status' => $nextBooking->status,
+            ];
+        }
+
+        // E. Fetch Top Services
         $topServices = RepairerProfile::with('user')
             ->latest()
             ->take(6)
@@ -68,7 +93,7 @@ class DashboardController extends Controller
                 ];
             });
 
-        // 4. Static Data
+        // F. Static Data
         $quickAccess = [
             ['name' => 'Repairer', 'iconType' => 'repairer'],
             ['name' => 'Cleaning', 'iconType' => 'cleaning'],
@@ -77,20 +102,19 @@ class DashboardController extends Controller
         ];
         $history = ['lastJob' => 'Welcome!', 'count' => 0];
 
-
-        // 5. Return to React
+        // 4. Return to React
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
             'isRepairer' => $user->isRepairer ?? false,
             'profile' => $user->repairerProfile,
 
-            // --- PASS THE DATA ---
+            // Repairer Props
             'schedule' => $schedule,
             'isGoogleConnected' => $isGoogleConnected,
-            'jobs' => $jobs, // <--- NOW PASSING REAL JOBS TO FRONTEND
-            // ---------------------
+            'jobs' => $jobs, // <--- Now fully populated!
 
-            'appointment' => null,
+            // Customer Props
+            'appointment' => $appointment,
             'quickAccess' => $quickAccess,
             'history' => $history,
             'topServices' => $topServices,

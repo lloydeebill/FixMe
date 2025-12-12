@@ -11,13 +11,19 @@ class Booking extends Model
     'repairer_id',
     'service_type',
     'scheduled_at',
+    // 🚨 ADD THIS: Needed for Google Calendar duration
+    'end_time',
     'status',
     'problem_description',
-    'location_snapshot'
+    'location_snapshot',
+    // 🚨 ADD THIS: Needed to store the Google ID after syncing
+    'google_event_id',
   ];
 
   protected $casts = [
     'scheduled_at' => 'datetime',
+    // 🚨 ADD THIS: Makes it easy to format for Google API
+    'end_time' => 'datetime',
   ];
 
   // Connectivity back to User

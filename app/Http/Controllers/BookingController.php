@@ -14,34 +14,32 @@ use Google\Service\Calendar\Event;
 
 class BookingController extends Controller
 {
+    // 1. STORE (Customer Creates Request)
     public function store(Request $request)
     {
-        // 1. Validate Basic Inputs
         $validated = $request->validate([
             'repairer_id' => 'required|exists:repairer_profiles,repairer_id',
             'service_type' => 'required|string',
-            'scheduled_at' => 'required|date|after:now', // Ensure it's in the future
+            'scheduled_at' => 'required|date|after:now',
             'problem_description' => 'nullable|string',
         ]);
 
-        // 2. --- NEW: DOUBLE BOOKING CHECK ---
-        // Check if ANY confirmed booking already exists for this repairer at this time
-        $isBooked = Booking::where('repairer_id', $validated['repairer_id'])
-            ->where('scheduled_at', $validated['scheduled_at'])
-            ->where('status', 'confirmed') // Block only if confirmed (or add 'pending' if you want to block requests too)
-            ->exists();
-
-        if ($isBooked) {
-            return back()->withErrors(['scheduled_at' => 'This time slot is already fully booked. Please choose another time.']);
-        }
-        // ------------------------------------
-
-        $customer = Auth::user();
-        $startTime = Carbon::parse($validated['scheduled_at']);
+        // Parse exactly what the user sent
+        $startTime = \Carbon\Carbon::parse($validated['scheduled_at']);
         $endTime = $startTime->copy()->addHour();
 
+        // Check for collisions
+        $exactCollision = Booking::where('repairer_id', $validated['repairer_id'])
+            ->where('scheduled_at', $startTime)
+            ->where('status', 'confirmed')
+            ->exists();
+
+        if ($exactCollision) {
+            return back()->withErrors(['scheduled_at' => 'This time is already booked.']);
+        }
+
         Booking::create([
-            'customer_id' => $customer->user_id,
+            'customer_id' => Auth::id(),
             'repairer_id' => $validated['repairer_id'],
             'service_type' => $validated['service_type'],
             'scheduled_at' => $startTime,
@@ -50,30 +48,31 @@ class BookingController extends Controller
             'status' => 'pending',
         ]);
 
-        return redirect()->back()->with('message', 'Booking requested!');
+        return redirect()->back()->with('message', 'Request sent! Waiting for repairer confirmation.');
     }
 
+    // 2. APPROVE (Repairer Accepts & Syncs)
     public function approve(Request $request, $id)
     {
         $booking = Booking::findOrFail($id);
 
-        // --- SECURITY FIX ---
-        // Find the profile associated with this booking
         $repairerProfile = RepairerProfile::where('repairer_id', $booking->repairer_id)->first();
 
-        // Check: Is the logged-in user the owner of this profile?
+        // Security Check
         if ($repairerProfile->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
-            abort(403, 'Unauthorized: You are not the repairer for this booking.');
+            abort(403, 'Unauthorized');
         }
 
-        // Update Status
+        // 1. Update Status
         $booking->update(['status' => 'confirmed']);
 
-        // --- GOOGLE SYNC LOGIC ---
+        // 2. Sync to Google Calendar
         $repairerUser = $repairerProfile->user;
-        $customer = User::find($booking->customer_id); // Assuming customer_id links to users table
+        $customer = User::find($booking->customer_id);
 
         if ($repairerUser && $repairerUser->google_calendar_token) {
+
+            // Call the helper function below
             $eventId = $this->addToGoogleCalendar($booking, $repairerUser, $customer);
 
             if ($eventId) {
@@ -81,10 +80,25 @@ class BookingController extends Controller
             }
         }
 
-        return redirect()->back()->with('message', 'Booking confirmed and synced to Google!');
+        return redirect()->back()->with('message', 'Job Accepted & Synced!');
     }
 
-    // --- HELPER FUNCTION ---
+    // 3. REJECT
+    public function reject(Request $request, $id)
+    {
+        $booking = Booking::findOrFail($id);
+        $repairerProfile = RepairerProfile::where('user_id', Auth::id())->first();
+
+        if (!$repairerProfile || $booking->repairer_id !== $repairerProfile->repairer_id) {
+            abort(403, 'Unauthorized');
+        }
+
+        $booking->update(['status' => 'rejected']);
+
+        return redirect()->back()->with('message', 'Request declined.');
+    }
+
+    // --- HELPER: SYNC TO GOOGLE ---
     private function addToGoogleCalendar($booking, $repairerUser, $customer)
     {
         try {
@@ -93,49 +107,49 @@ class BookingController extends Controller
             $client->setClientSecret(config('services.google.client_secret'));
             $client->setAccessToken($repairerUser->google_calendar_token);
 
-            // 1. REFRESH TOKEN LOGIC
+            // A. Refresh Token Logic
             if ($client->isAccessTokenExpired()) {
                 if (!$repairerUser->google_refresh_token) {
-                    \Log::error('Google Sync Failed: No refresh token for User ' . $repairerUser->id);
+                    \Log::error('Google Sync Failed: Token expired and no refresh token.');
                     return null;
                 }
-
                 $newAccessToken = $client->fetchAccessTokenWithRefreshToken($repairerUser->google_refresh_token);
 
                 if (isset($newAccessToken['error'])) {
-                    \Log::error('Google Sync Failed: ' . json_encode($newAccessToken));
+                    \Log::error('Google Sync Failed: Error refreshing token.');
                     return null;
                 }
 
-                $repairerUser->update([
-                    'google_calendar_token' => $newAccessToken['access_token']
-                ]);
-
-                $client->setAccessToken($newAccessToken);
+                $repairerUser->update(['google_calendar_token' => $newAccessToken['access_token']]);
+                $client->setAccessToken($newAccessToken['access_token']);
             }
 
-            // 2. CREATE EVENT
             $service = new GoogleCalendar($client);
+
+            // B. THE FLOATING TIME FIX + TIMEZONE
+            // 1. Get raw string (e.g. "2025-12-25T14:00:00")
+            $startStr = \Carbon\Carbon::parse($booking->scheduled_at)->format('Y-m-d\TH:i:s');
+            $endStr = \Carbon\Carbon::parse($booking->end_time)->format('Y-m-d\TH:i:s');
 
             $event = new Event([
                 'summary' => 'Repair Job: ' . $booking->service_type,
                 'location' => $customer->location ?? 'Customer Location',
                 'description' => "Customer: {$customer->name}\nProblem: {$booking->problem_description}",
                 'start' => [
-                    'dateTime' => Carbon::parse($booking->scheduled_at)->toRfc3339String(),
-                    'timeZone' => 'Asia/Manila',
+                    'dateTime' => $startStr,
+                    'timeZone' => 'Asia/Manila', //  REQUIRED: Tells Google where 14:00 is
                 ],
                 'end' => [
-                    'dateTime' => Carbon::parse($booking->end_time)->toRfc3339String(),
-                    'timeZone' => 'Asia/Manila',
+                    'dateTime' => $endStr,
+                    'timeZone' => 'Asia/Manila', //  REQUIRED
                 ],
             ]);
 
             $newEvent = $service->events->insert('primary', $event);
             return $newEvent->id;
         } catch (\Exception $e) {
-            \Log::error('Google Calendar Sync Failed: ' . $e->getMessage());
-            return null;
+            \Log::error('Google Calendar Sync Exception: ' . $e->getMessage());
+            return null; // Fail gracefully
         }
     }
 }

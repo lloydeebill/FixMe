@@ -1,42 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { Head, router } from '@inertiajs/react';
 import RepairerMobile from './RepairerMobile';
-import RepairerDesktop from './RepairerDesktop'; // You'll create this next
+import RepairerDesktop from './RepairerDesktop';
 
 export default function RepairerDashboard({ 
     user, 
     profile, 
-    jobs: initialJobs, // Rename incoming prop to avoid conflict with state
+    jobs: initialJobs, 
     schedule,
     isGoogleConnected,
     onSwitchToCustomer 
 }) {
-    
-    // Initialize state with the REAL data from Laravel
     const [jobs, setJobs] = useState(initialJobs);
 
-    // Sync state if props change (e.g. after a re-visit)
     useEffect(() => {
         setJobs(initialJobs);
     }, [initialJobs]);
 
-    // --- SHARED LOGIC (The Brain) ---
+    // --- SHARED ACTIONS (Defined Once!) ---
     
-    // We don't need handleAccept here because RepairerMobile 
-    // now calls the backend directly via router.post().
-    // But if you want to update the UI instantly (Optimistic UI), you can:
+    const handleApprove = (id) => {
+        if (confirm("Accept this job and sync to Google Calendar?")) {
+            router.post(`/bookings/${id}/approve`, {}, {
+                onSuccess: () => alert("Job Accepted & Synced!"),
+                onError: () => alert("Something went wrong.")
+            });
+        }
+    };
+
+    const handleReject = (id) => {
+        if (confirm('Are you sure you want to decline this request?')) {
+            router.post(`/bookings/${id}/reject`, {}, {
+                onSuccess: () => alert("Request declined."),
+                onError: () => alert("Something went wrong.")
+            });
+        }
+    };
+
     const refreshJobs = () => {
-        // Inertia automatically refreshes props on navigation, 
-        // but we can manually trigger a reload if needed.
         router.reload({ only: ['jobs'] });
     };
 
+    const handleLogout = () => {
+        router.post('/logout'); 
+    };
     // --- RENDER ---
     return (
         <>
             <Head title="Work Dashboard" />
 
-            {/* 1. MOBILE VIEW (< 768px) */}
+            {/* 1. MOBILE VIEW */}
             <div className="block md:hidden">
                 <RepairerMobile 
                     user={user} 
@@ -45,12 +58,14 @@ export default function RepairerDashboard({
                     schedule={schedule}
                     isGoogleConnected={isGoogleConnected}
                     onSwitchToCustomer={onSwitchToCustomer}
-                    // Pass the refresh function if child needs to trigger a reload
+                    onApprove={handleApprove} 
+                    onReject={handleReject}
                     onRefresh={refreshJobs}
+                    onLogout={handleLogout} 
                 />
             </div>
 
-            {/* 2. DESKTOP VIEW (>= 768px) */}
+            {/* 2. DESKTOP VIEW */}
             <div className="hidden md:block">
                 <RepairerDesktop 
                     user={user} 
@@ -59,6 +74,11 @@ export default function RepairerDashboard({
                     schedule={schedule}
                     isGoogleConnected={isGoogleConnected}
                     onSwitchToCustomer={onSwitchToCustomer}
+                    // 👇 PASSING THE SHARED ACTIONS DOWN
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    onLogout={handleLogout} 
+
                 />
             </div>
         </>
