@@ -27,6 +27,9 @@ class User extends Authenticatable implements MustVerifyEmail
         'gender',
         'location',
         'date_of_birth',
+        'google_calendar_token',
+        'google_refresh_token',
+        'google_token_expires_in',
     ];
 
     protected $hidden = [

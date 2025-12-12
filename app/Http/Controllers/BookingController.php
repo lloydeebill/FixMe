@@ -16,21 +16,30 @@ class BookingController extends Controller
 {
     public function store(Request $request)
     {
-        // 1. Validate
+        // 1. Validate Basic Inputs
         $validated = $request->validate([
             'repairer_id' => 'required|exists:repairer_profiles,repairer_id',
             'service_type' => 'required|string',
-            'scheduled_at' => 'required|date',
+            'scheduled_at' => 'required|date|after:now', // Ensure it's in the future
             'problem_description' => 'nullable|string',
         ]);
 
-        $customer = Auth::user();
+        // 2. --- NEW: DOUBLE BOOKING CHECK ---
+        // Check if ANY confirmed booking already exists for this repairer at this time
+        $isBooked = Booking::where('repairer_id', $validated['repairer_id'])
+            ->where('scheduled_at', $validated['scheduled_at'])
+            ->where('status', 'confirmed') // Block only if confirmed (or add 'pending' if you want to block requests too)
+            ->exists();
 
-        // 2. Calculate End Time
+        if ($isBooked) {
+            return back()->withErrors(['scheduled_at' => 'This time slot is already fully booked. Please choose another time.']);
+        }
+        // ------------------------------------
+
+        $customer = Auth::user();
         $startTime = Carbon::parse($validated['scheduled_at']);
         $endTime = $startTime->copy()->addHour();
 
-        // 3. Create the Booking (Status: Pending)
         Booking::create([
             'customer_id' => $customer->user_id,
             'repairer_id' => $validated['repairer_id'],
@@ -38,11 +47,10 @@ class BookingController extends Controller
             'scheduled_at' => $startTime,
             'end_time' => $endTime,
             'problem_description' => $validated['problem_description'] ?? null,
-            'status' => 'pending', // Waiting for approval
+            'status' => 'pending',
         ]);
 
-        // 4. Return success immediately (No Google Sync yet)
-        return redirect()->back()->with('message', 'Booking requested! Waiting for repairer approval.');
+        return redirect()->back()->with('message', 'Booking requested!');
     }
 
     public function approve(Request $request, $id)
