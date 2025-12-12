@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\RepairerProfile;
+use App\Models\Booking; // <--- DON'T FORGET THIS IMPORT
 
 class DashboardController extends Controller
 {
@@ -20,20 +21,19 @@ class DashboardController extends Controller
         // --- NEW LOGIC: PREPARE REPAIRER DATA ---
         $schedule = [];
         $isGoogleConnected = false;
+        $jobs = []; // <--- 2. INITIALIZE THE JOBS ARRAY
 
         // Only fetch this if they actually have a repairer profile
         if ($user->repairerProfile) {
 
-            // A. Check Google Calendar Status (True if token exists)
+            // A. Check Google Calendar Status
             $isGoogleConnected = !empty($user->google_refresh_token);
 
             // B. Fetch Availability Schedule
-            // We use the relationship we defined earlier
             $schedule = $user->repairerProfile->availabilities()
                 ->orderBy('day_of_week', 'asc')
                 ->get();
 
-            // C. Fallback: If they haven't set a schedule yet, send a default one (Mon-Sun, Offline)
             if ($schedule->isEmpty()) {
                 $schedule = collect(range(0, 6))->map(function ($day) {
                     return [
@@ -44,11 +44,16 @@ class DashboardController extends Controller
                     ];
                 });
             }
+
+            // --- THIS WAS MISSING: FETCH REAL BOOKINGS (JOBS) ---
+            $jobs = Booking::with('customer') // Assumes Booking belongsTo Customer
+                ->where('repairer_id', $user->repairerProfile->repairer_id)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            // ----------------------------------------------------
         }
-        // ----------------------------------------
 
-
-        // 2. Fetch Real Repairers (For Customer View)
+        // 3. Fetch Real Repairers (For Customer View)
         $topServices = RepairerProfile::with('user')
             ->latest()
             ->take(6)
@@ -63,7 +68,7 @@ class DashboardController extends Controller
                 ];
             });
 
-        // 3. Static Data
+        // 4. Static Data
         $quickAccess = [
             ['name' => 'Repairer', 'iconType' => 'repairer'],
             ['name' => 'Cleaning', 'iconType' => 'cleaning'],
@@ -72,16 +77,18 @@ class DashboardController extends Controller
         ];
         $history = ['lastJob' => 'Welcome!', 'count' => 0];
 
-        // 4. Return to React
+
+        // 5. Return to React
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
-            'isRepairer' => $user->isRepairer ?? false, // Ensure your User model has this accessor or check profile existence
+            'isRepairer' => $user->isRepairer ?? false,
             'profile' => $user->repairerProfile,
 
-            // --- PASS THE NEW DATA ---
+            // --- PASS THE DATA ---
             'schedule' => $schedule,
             'isGoogleConnected' => $isGoogleConnected,
-            // -------------------------
+            'jobs' => $jobs, // <--- NOW PASSING REAL JOBS TO FRONTEND
+            // ---------------------
 
             'appointment' => null,
             'quickAccess' => $quickAccess,
