@@ -15,8 +15,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
                         <div className="flex">
                             {/* Logo */}
                             <div className="shrink-0 flex items-center">
-                                <Link href="/">
-                                    {/* Simple "FixMe" Text Logo */}
+                                <Link href="/app"> {/* ✅ FIXED: Points to /app */}
                                     <h1 className="text-2xl font-black text-blue-600 tracking-tighter">
                                         FixMe.
                                     </h1>
@@ -25,15 +24,16 @@ export default function AuthenticatedLayout({ user, header, children }) {
 
                             {/* Navigation Links (Desktop) */}
                             <div className="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                                {/* 🚨 FIX: Changed route('dashboard') to string '/dashboard' */}
+                                
+                                {/* 1. DASHBOARD LINK */}
                                 <Link
-                                    href="/dashboard"
+                                    href="/app" // ✅ FIXED: Changed from /dashboard to /app
                                     className="inline-flex items-center px-1 pt-1 border-b-2 border-blue-500 text-sm font-medium leading-5 text-gray-900 focus:outline-none transition duration-150 ease-in-out"
                                 >
                                     Dashboard
                                 </Link>
 
-                                                            {/* 2. LOGIC: If NOT a repairer, show "Become a Pro" */}
+                                {/* 2. BECOME A PRO LINK (Only for Customers) */}
                                 {!user.isRepairer && (
                                     <Link
                                         href="/become-repairer"
@@ -43,10 +43,10 @@ export default function AuthenticatedLayout({ user, header, children }) {
                                     </Link>
                                 )}
 
-                                                            {/* 3. LOGIC: If IS a repairer, show "Work Mode" (Optional, for later) */}
+                                {/* 3. WORK MODE BADGE (Only for Repairers) */}
                                 {user.isRepairer === 1 && (
                                     <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-green-600">
-                                        ✅ Repairer Mode Active
+                                        ✅ Repairer Account
                                     </span>
                                 )}
                             </div>
@@ -66,8 +66,6 @@ export default function AuthenticatedLayout({ user, header, children }) {
 
                                 {/* Simple Hover Dropdown */}
                                 <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                                    
-
                                     <Link
                                         href="/logout"
                                         method="post"
@@ -109,9 +107,9 @@ export default function AuthenticatedLayout({ user, header, children }) {
 
                 {/* MOBILE MENU */}
                 <div className={(showingNavigationDropdown ? 'block' : 'hidden') + ' sm:hidden'}>
-                   <div className="pt-2 pb-3 space-y-1">
+                    <div className="pt-2 pb-3 space-y-1">
                         <Link
-                            href="/dashboard"
+                            href="/app" // ✅ FIXED: Changed from /dashboard to /app
                             className="block w-full pl-3 pr-4 py-2 border-l-4 border-blue-400 text-left text-base font-medium text-blue-700 bg-blue-50 focus:outline-none transition duration-150 ease-in-out"
                         >
                             Dashboard
@@ -135,8 +133,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
                         </div>
 
                         <div className="mt-3 space-y-1">
-                            {/* ✅ ADD THIS LINK HERE TOO */}
-
+                            {/* ✅ LOGOUT ADDED HERE */}
                             <Link
                                 href="/logout"
                                 method="post"
