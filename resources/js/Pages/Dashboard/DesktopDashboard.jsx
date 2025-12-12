@@ -1,8 +1,7 @@
-import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import React, { useState } from 'react'; // 1. Added useState
+import { Head, router } from '@inertiajs/react'; // 2. Added router
 
-// --- HELPER: Category Icons (Same as Mobile) ---
+// --- HELPER: Category Icons (Kept same) ---
 const renderCategoryIcon = (type) => {
     const iconClass = "w-8 h-8 text-[#1b6ed1]";
     switch (type) {
@@ -19,9 +18,11 @@ const renderCategoryIcon = (type) => {
     }
 };
 
-const DesktopDashboard = ({ user, appointment, history, onRepairerSelect, topServices }) => {
+const DesktopDashboard = ({ user, appointment, history, onRepairerSelect, topServices, onSwitchToWork }) => {
     
-    // Categories Data
+    // 3. ADDED STATE FOR DROPDOWN
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
     const categories = [
         { name: 'Repairer', type: 'repairer' },
         { name: 'Cleaning', type: 'cleaning' },
@@ -29,14 +30,82 @@ const DesktopDashboard = ({ user, appointment, history, onRepairerSelect, topSer
         { name: 'Electrical', type: 'electrical' },
     ];
 
+    const handleLogout = () => {
+        router.post('/logout');
+    };
+
     return (
-        <AuthenticatedLayout
-            user={user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Dashboard</h2>}
-        >
+        <>
             <Head title="Dashboard" />
 
-            <div className="py-8 md:py-12 bg-gray-50 min-h-screen">
+            <div className="min-h-screen bg-gray-50 pb-12">
+                
+                {/* --- CUSTOM HEADER --- */}
+                <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-4 mb-8 sticky top-0 z-50">
+                    <div className="max-w-7xl mx-auto flex justify-between items-center">
+                        
+                        {/* 1. RENAMED TO FixMe */}
+                        <div className="flex items-center gap-4">
+                            <h2 className="font-black text-2xl text-blue-600 tracking-tighter">FixMe.</h2>
+                        </div>
+
+                        {/* 2. USER DROPDOWN MENU */}
+                        <div className="relative">
+                            <button 
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full transition-colors"
+                            >
+                                <span className="font-bold text-sm text-gray-700">{user.name}</span>
+                                <svg className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {/* Dropdown Content */}
+                            {isDropdownOpen && (
+                                <>
+                                    {/* Invisible Overlay to close menu when clicking outside */}
+                                    <div 
+                                        className="fixed inset-0 z-10" 
+                                        onClick={() => setIsDropdownOpen(false)}
+                                    ></div>
+
+                                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-20 overflow-hidden animate-fade-in-up">
+                                        <div className="py-2">
+                                            {/* OPTION A: SWITCH / BECOME PRO */}
+                                            <button 
+                                                onClick={() => {
+                                                    setIsDropdownOpen(false);
+                                                    onSwitchToWork();
+                                                }}
+                                                className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-blue-600 flex items-center gap-3 transition-colors"
+                                            >
+                                                <div className="bg-blue-50 p-1.5 rounded-lg text-blue-600">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                                                </div>
+                                                {user.isRepairer ? 'Switch to Work Mode' : 'Become a Pro'}
+                                            </button>
+
+                                            <div className="border-t border-gray-100 my-1"></div>
+
+                                            {/* OPTION B: LOGOUT */}
+                                            <button 
+                                                onClick={handleLogout}
+                                                className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center gap-3 transition-colors"
+                                            >
+                                                <div className="bg-gray-100 p-1.5 rounded-lg text-gray-500 group-hover:text-red-600">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                                                </div>
+                                                Log Out
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
                     
                     {/* --- 1. WELCOME BANNER --- */}
@@ -48,6 +117,13 @@ const DesktopDashboard = ({ user, appointment, history, onRepairerSelect, topSer
                             <p className="text-gray-500 text-lg">
                                 Ready to get things fixed? Select a service below.
                             </p>
+                            
+                            <button 
+                                onClick={onSwitchToWork}
+                                className="mt-3 text-[#1b6ed1] font-bold text-sm hover:underline flex items-center gap-1"
+                            >
+                                {user.isRepairer ? 'Go to your Repairer Dashboard →' : 'Want to earn money? Register as a Repairer →'}
+                            </button>
                         </div>
                         <div className="hidden lg:block">
                              {/* Optional: Add a Dashboard Illustration/Icon here if desired */}
@@ -136,7 +212,7 @@ const DesktopDashboard = ({ user, appointment, history, onRepairerSelect, topSer
                         <div className="lg:col-span-1 space-y-8">
                             
                             {/* UPCOMING APPOINTMENT (Using Real Logic) */}
-                            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden sticky top-8">
+                            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden sticky top-24"> 
                                 <div className="bg-[#1b6ed1] p-4 text-white text-center">
                                     <h3 className="font-bold text-lg tracking-wide uppercase">Next Appointment</h3>
                                 </div>
@@ -187,7 +263,7 @@ const DesktopDashboard = ({ user, appointment, history, onRepairerSelect, topSer
                     </div>
                 </div>
             </div>
-        </AuthenticatedLayout>
+        </>
     );
 };
 

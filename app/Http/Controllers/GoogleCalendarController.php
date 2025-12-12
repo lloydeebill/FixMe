@@ -13,7 +13,7 @@ class GoogleCalendarController extends Controller
         return Socialite::driver('google')
             ->scopes(['https://www.googleapis.com/auth/calendar.events'])
             ->with(['access_type' => 'offline', 'prompt' => 'consent'])
-            ->redirectUrl(route('calendar.callback')) // IMPORTANT: Points to the specific calendar route
+            ->redirectUrl(route('calendar.callback'))
             ->redirect();
     }
 
@@ -21,7 +21,7 @@ class GoogleCalendarController extends Controller
     {
         try {
             $googleUser = Socialite::driver('google')
-                ->redirectUrl(route('calendar.callback')) // Must match the connect URL
+                ->redirectUrl(route('calendar.callback'))
                 ->user();
 
             $user = Auth::user();
@@ -31,10 +31,12 @@ class GoogleCalendarController extends Controller
                 'google_refresh_token' => $googleUser->refreshToken,
             ]);
 
-            return redirect()->route('availability.edit')
+            // ✅ FIXED: Changed from 'availability.edit' to 'dashboard'
+            return redirect()->route('dashboard')
                 ->with('success', 'Google Calendar successfully connected!');
         } catch (\Exception $e) {
-            return redirect()->route('availability.edit')
+            // Error handling
+            return redirect()->route('dashboard')
                 ->with('error', 'Failed to connect: ' . $e->getMessage());
         }
     }

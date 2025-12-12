@@ -1,33 +1,43 @@
 import React, { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react'; // 👈 1. Added useForm
 
 export default function RepairerDesktop({ 
     user, 
     profile, 
-    jobs = [],     // <--- Safety default
-    schedule = [], // <--- Safety default
+    jobs = [], 
+    schedule = [], 
     isGoogleConnected, 
-    onSwitchToCustomer 
+    onSwitchToCustomer,
+    onApprove, 
+    onReject,
+    onLogout 
 }) {
-    const [activeTab, setActiveTab] = useState('jobs'); // 'jobs', 'schedule', 'earnings'
+    const [activeTab, setActiveTab] = useState('jobs'); 
 
-    // --- ACTIONS (Same logic as Mobile) ---
-    const handleApprove = (id) => {
-        router.post(`/bookings/${id}/approve`, {}, {
+    // 🛑 2. PORTED FORM LOGIC FROM MOBILE
+    const { data, setData, put, processing } = useForm({
+        // Ensure schedule is an array to prevent crashes
+        schedule: (schedule && schedule.length > 0) ? schedule : [] 
+    });
+
+    const updateDay = (index, field, value) => {
+        const newSchedule = [...data.schedule];
+        newSchedule[index][field] = value;
+        setData('schedule', newSchedule);
+    };
+
+    const saveSchedule = () => {
+        put('/repairer/availability', {
             preserveScroll: true,
-            onSuccess: () => alert("Job Accepted!")
+            onSuccess: () => alert('Availability Saved!')
         });
     };
 
-    const handleReject = (id) => {
-        if (confirm('Reject this job?')) {
-             router.post(`/bookings/${id}/reject`, {}, { preserveScroll: true });
-        }
-    };
+    const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
     // --- SUB-COMPONENTS ---
     
-    // 1. Sidebar Button
+    // 1. Sidebar Button (Kept same)
     const SidebarItem = ({ id, label, icon }) => (
         <button 
             onClick={() => setActiveTab(id)}
@@ -42,7 +52,7 @@ export default function RepairerDesktop({
         </button>
     );
 
-    // 2. Jobs Table View (Desktop Specific)
+    // 2. Jobs Table View (Kept same)
     const JobsView = () => (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center">
@@ -63,7 +73,6 @@ export default function RepairerDesktop({
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                    {/* Safety check: jobs might be empty initially */}
                     {jobs.map(job => (
                         <tr key={job.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4">
@@ -91,14 +100,13 @@ export default function RepairerDesktop({
                             <td className="px-6 py-4 text-right">
                                 {job.status === 'pending' && (
                                     <div className="flex justify-end gap-2">
-                                        <button 
-                                            onClick={() => handleReject(job.id)}
+                                        <button onClick={() => onReject(job.id)}
                                             className="px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-50 rounded"
                                         >
                                             Decline
                                         </button>
                                         <button 
-                                            onClick={() => handleApprove(job.id)}
+                                            onClick={() => onApprove(job.id)}
                                             className="px-4 py-1 text-xs font-bold bg-black text-white rounded hover:bg-gray-800"
                                         >
                                             Accept
@@ -120,10 +128,11 @@ export default function RepairerDesktop({
         </div>
     );
 
-    // 3. Simple Schedule View (Desktop Specific)
+    // 🛑 3. UPDATED SCHEDULE VIEW (Interactive now!)
     const ScheduleView = () => (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Sync Status Card */}
+            
+            {/* Left Column: Calendar Sync Info */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
                 <h3 className="font-bold text-lg mb-2">Calendar Sync</h3>
                 <p className="text-sm text-gray-500 mb-6">
@@ -140,29 +149,67 @@ export default function RepairerDesktop({
                 )}
             </div>
 
-            {/* Shift List (Read Only View for Desktop) */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-lg mb-4">Weekly Availability</h3>
-                <div className="space-y-2">
-                    {schedule.map((day) => (
-                        <div key={day.day_of_week} className="flex justify-between items-center p-3 hover:bg-gray-50 rounded-lg">
-                            {/* We use a helper array to convert 0->Sun, 1->Mon */}
-                            <span className="font-bold w-12">
-                                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][day.day_of_week]}
-                            </span>
+            {/* Right Column: INTERACTIVE Schedule Editor */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                    <h3 className="font-bold text-lg text-gray-800">Weekly Availability</h3>
+                    {processing && <span className="text-xs text-gray-400 animate-pulse">Saving...</span>}
+                </div>
+                
+                <div className="divide-y divide-gray-100">
+                    {data.schedule.map((day, index) => (
+                        <div key={day.day_of_week} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
                             
-                            {day.is_active ? (
-                                <div className="flex gap-2">
-                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                        {day.start_time?.slice(0,5)} - {day.end_time?.slice(0,5)}
-                                    </span>
-                                </div>
-                            ) : (
-                                <span className="text-xs text-gray-400 italic">Unavailable</span>
-                            )}
+                            {/* Checkbox & Day Name */}
+                            <div className="flex items-center gap-4 w-1/3">
+                                <input 
+                                    type="checkbox" 
+                                    checked={day.is_active}
+                                    onChange={(e) => updateDay(index, 'is_active', e.target.checked)}
+                                    className="w-5 h-5 rounded text-black focus:ring-black border-gray-300 cursor-pointer"
+                                />
+                                <span className={`font-bold ${day.is_active ? 'text-gray-900' : 'text-gray-400'}`}>
+                                    {DAYS[day.day_of_week]}
+                                </span>
+                            </div>
+                            
+                            {/* Time Inputs */}
+                            <div className="flex-1 flex justify-end">
+                                {day.is_active ? (
+                                    <div className="flex items-center gap-3">
+                                        <input 
+                                            type="time" 
+                                            value={day.start_time}
+                                            onChange={(e) => updateDay(index, 'start_time', e.target.value)}
+                                            className="bg-white border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-black focus:border-black"
+                                        />
+                                        <span className="text-gray-400 font-bold">-</span>
+                                        <input 
+                                            type="time" 
+                                            value={day.end_time}
+                                            onChange={(e) => updateDay(index, 'end_time', e.target.value)}
+                                            className="bg-white border border-gray-300 rounded-lg text-sm px-3 py-2 focus:ring-black focus:border-black"
+                                        />
+                                    </div>
+                                ) : (
+                                    <span className="text-sm text-gray-400 italic py-2">Unavailable</span>
+                                )}
+                            </div>
                         </div>
                     ))}
-                    {schedule.length === 0 && <p className="text-gray-400 text-sm">No schedule set yet.</p>}
+                    
+                    {data.schedule.length === 0 && <p className="p-6 text-gray-400 text-sm">No schedule data found.</p>}
+                </div>
+
+                {/* Save Button */}
+                <div className="p-6 bg-gray-50 border-t border-gray-100">
+                    <button 
+                        onClick={saveSchedule}
+                        disabled={processing}
+                        className="w-full bg-black text-white py-3 rounded-xl font-bold shadow-lg hover:bg-gray-800 disabled:opacity-50 transition-all transform active:scale-95"
+                    >
+                        {processing ? 'Saving...' : 'Save Changes'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -173,7 +220,7 @@ export default function RepairerDesktop({
         <div className="min-h-screen bg-gray-50 flex font-sans">
             
             {/* LEFT SIDEBAR */}
-            <aside className="w-64 bg-white border-r border-gray-200 fixed h-full p-6 flex flex-col justify-between">
+            <aside className="w-64 bg-white border-r border-gray-200 fixed h-full p-6 flex flex-col justify-between z-10">
                 <div>
                     <div className="mb-8 px-4">
                         <h1 className="text-2xl font-black tracking-tight">Fixr<span className="text-blue-600">.</span></h1>
@@ -187,10 +234,9 @@ export default function RepairerDesktop({
                     </nav>
                 </div>
 
-                {/* Bottom Profile / Switch */}
-                <div className="border-t border-gray-100 pt-6">
-                    <div className="flex items-center gap-3 mb-4 px-2">
-                        {/* Avatar Fallback */}
+                {/* Bottom Profile / Switch / Logout */}
+                <div className="border-t border-gray-100 pt-6 space-y-3">
+                    <div className="flex items-center gap-3 px-2">
                         <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-500 text-sm">
                             {user.name.charAt(0)}
                         </div>
@@ -199,11 +245,20 @@ export default function RepairerDesktop({
                             <p className="text-xs text-green-600 font-bold">● Online</p>
                         </div>
                     </div>
+                    
                     <button 
                         onClick={onSwitchToCustomer}
-                        className="w-full text-center text-xs font-bold text-gray-400 hover:text-black py-2 transition-colors"
+                        className="w-full text-center text-xs font-bold text-blue-600 hover:text-blue-800 py-2 border border-blue-100 rounded-lg transition-colors"
                     >
                         Switch to Customer Mode
+                    </button>
+
+                    <button 
+                        onClick={onLogout}
+                        className="w-full flex items-center justify-center gap-2 text-xs font-bold text-gray-400 hover:text-red-600 py-2 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 01-3-3V7a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Log Out
                     </button>
                 </div>
             </aside>
@@ -221,7 +276,6 @@ export default function RepairerDesktop({
                     </div>
                 </header>
 
-                {/* Content Switching */}
                 {activeTab === 'jobs' && <JobsView />}
                 {activeTab === 'schedule' && <ScheduleView />}
                 {activeTab === 'earnings' && <div className="text-center py-20 text-gray-400">Earnings Chart Coming Soon</div>}

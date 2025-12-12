@@ -6,11 +6,12 @@ export default function RepairerMobile({
     profile, 
     jobs = [], // <--- FIXED: Added default value here so it never crashes
     earnings, 
-    onAccept, 
-    onDecline, 
+    onApprove, 
+    onReject,
     onSwitchToCustomer,
     schedule = [], 
-    isGoogleConnected = false 
+    isGoogleConnected = false,
+    onLogout
 }) {
     const [activeTab, setActiveTab] = useState('jobs');
 
@@ -74,10 +75,10 @@ export default function RepairerMobile({
                         <span className="font-semibold">Note:</span> {job.problem_description || 'No description'}
                     </p>
                     <div className="flex gap-2">
-                        <button onClick={() => handleReject(job.id)} className="flex-1 bg-white border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-50">
+                        <button onClick={() => onReject(job.id)} className="flex-1 bg-white border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-50">
                             Decline
                         </button>
-                        <button onClick={() => handleApprove(job.id)} className="flex-1 bg-black text-white py-2 rounded-lg text-sm font-bold hover:bg-gray-800">
+                        <button onClick={() => onApprove(job.id)} className="flex-1 bg-black text-white py-2 rounded-lg text-sm font-bold hover:bg-gray-800">
                             Accept & Sync
                         </button>
                     </div>
@@ -220,6 +221,14 @@ export default function RepairerMobile({
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                      </div>
                     Switch
+                </button>
+
+                <button 
+                    onClick={onLogout}
+                    className="flex flex-col items-center hover:text-red-500 text-gray-400"
+                >
+                    <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    Logout
                 </button>
             </nav>
         </div>

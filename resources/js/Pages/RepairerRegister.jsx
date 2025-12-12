@@ -1,61 +1,112 @@
 import React from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, usePage } from '@inertiajs/react';
-import RepairerFormFields from '@/Components/RepairerFormFields'; // <--- IMPORT IT
+import { Head, useForm, Link } from '@inertiajs/react';
 
-export default function RepairerRegister() {
-    const { auth } = usePage().props;
-    
+// You can use your existing components if you want, or just raw HTML for simplicity.
+// I'll use raw Tailwind here to guarantee it works without missing imports.
+
+export default function RepairerRegister({ auth }) {
     const { data, setData, post, processing, errors } = useForm({
         business_name: '',
-        focus_area: '', 
+        focus_area: 'Repairer', // Default value
         bio: '',
     });
 
     const submit = (e) => {
         e.preventDefault();
-        post('/repairer/apply');    
+        
+        // 🛑 FIX: Use the string URL directly to ensure it hits the route
+        post('/become-repairer', {
+            onSuccess: () => alert('Welcome to the team!'),
+            onError: (err) => console.log(err), // Helpful for debugging
+        });
     };
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Become a Pro</h2>}
-        >
-            <Head title="Register as Repairer" />
+        <div className="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
+            <Head title="Become a Repairer" />
 
-            <div className="py-12">
-                <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100">
-                        
-                        <div className="mb-6 text-center">
-                            <h1 className="text-2xl font-bold text-gray-900">Join the FixMe Team</h1>
-                            <p className="text-gray-500 mt-2">Fill out your professional details below.</p>
-                        </div>
-
-                        <form onSubmit={submit}>
-                            
-                            {/* --- REUSABLE COMPONENT --- */}
-                            <RepairerFormFields 
-                                data={data} 
-                                setData={setData} 
-                                errors={errors} 
-                            />
-                            {/* -------------------------- */}
-
-                            <div className="pt-6">
-                                <button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg transition transform active:scale-95 disabled:opacity-50"
-                                >
-                                    {processing ? 'Registering...' : 'Activate Repairer Account'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+            {/* Logo or Branding */}
+            <div className="mb-6 text-center">
+                <h1 className="text-3xl font-black text-blue-600 tracking-tighter">FixMe.</h1>
+                <p className="text-gray-500 text-sm mt-2">Join our network of professional fixers</p>
             </div>
-        </AuthenticatedLayout>
+
+            <div className="w-full sm:max-w-md mt-6 px-6 py-8 bg-white shadow-md overflow-hidden sm:rounded-lg">
+                <form onSubmit={submit}>
+                    
+                    {/* 1. Business Name */}
+                    <div className="mb-4">
+                        <label className="block font-medium text-sm text-gray-700" htmlFor="business_name">
+                            Business / Display Name
+                        </label>
+                        <input
+                            id="business_name"
+                            type="text"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm mt-1 block w-full"
+                            value={data.business_name}
+                            onChange={(e) => setData('business_name', e.target.value)}
+                            required
+                            placeholder="e.g. John's Plumbing"
+                        />
+                        {errors.business_name && <div className="text-red-500 text-xs mt-1">{errors.business_name}</div>}
+                    </div>
+
+                    {/* 2. Focus Area (Dropdown) */}
+                    <div className="mb-4">
+                        <label className="block font-medium text-sm text-gray-700" htmlFor="focus_area">
+                            Specialty
+                        </label>
+                        <select
+                            id="focus_area"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm mt-1 block w-full"
+                            value={data.focus_area}
+                            onChange={(e) => setData('focus_area', e.target.value)}
+                        >
+                            <option value="Repairer">General Repairer</option>
+                            <option value="Plumbing">Plumbing</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Cleaning">Cleaning</option>
+                        </select>
+                        {errors.focus_area && <div className="text-red-500 text-xs mt-1">{errors.focus_area}</div>}
+                    </div>
+
+                    {/* 3. Bio */}
+                    <div className="mb-6">
+                        <label className="block font-medium text-sm text-gray-700" htmlFor="bio">
+                            Short Bio
+                        </label>
+                        <textarea
+                            id="bio"
+                            className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm mt-1 block w-full"
+                            rows="4"
+                            value={data.bio}
+                            onChange={(e) => setData('bio', e.target.value)}
+                            placeholder="Tell customers about your experience..."
+                        ></textarea>
+                        {errors.bio && <div className="text-red-500 text-xs mt-1">{errors.bio}</div>}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between mt-4">
+                        <Link
+                            href="/app"
+                            className="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                            Cancel
+                        </Link>
+
+                        <button
+                            type="submit"
+                            disabled={processing}
+                            className={`inline-flex items-center px-4 py-3 bg-black border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 ${
+                                processing ? 'opacity-25' : ''
+                            }`}
+                        >
+                            {processing ? 'Registering...' : 'Activate Pro Account'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     );
 }

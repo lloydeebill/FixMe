@@ -5,7 +5,6 @@ import DesktopDashboard from './Dashboard/DesktopDashboard';
 import BookingModal from '../Components/BookingModal';
 import RepairerDashboard from './Dashboard/Repairer/RepairerDashboard';
 
-// 1. Accept ALL props from the Laravel Controller (Added jobs, schedule, etc.)
 export default function Dashboard({ 
     auth, 
     isRepairer, 
@@ -14,7 +13,6 @@ export default function Dashboard({
     quickAccess, 
     history, 
     topServices,
-    // --- NEW PROPS FROM CONTROLLER ---
     jobs = [], 
     schedule = [],
     isGoogleConnected = false
@@ -23,10 +21,23 @@ export default function Dashboard({
     const user = auth.user;
 
     // --- STATE ---
-    const [isWorkMode, setIsWorkMode] = useState(isRepairer);
+    const [isWorkMode, setIsWorkMode] = useState(isRepairer); // Default to work mode if they logged in as repairer context
     const [selectedRepairer, setSelectedRepairer] = useState(null);
 
     // --- HANDLERS ---
+    
+    // 🛑 THE NEW SMART SWITCH LOGIC
+    const handleSwitchToWorkMode = () => {
+        if (isRepairer) {
+            // Case A: They are already a pro -> Show the Dashboard
+            setIsWorkMode(true);
+        } else {
+            // Case B: They are just a customer -> Go to Registration Page
+            // This matches your web.php route: name('repairer.create')
+            router.get('/become-repairer');
+        }
+    };
+
     const handleRepairerSelect = (repairer) => {
         setSelectedRepairer(repairer); 
     };
@@ -44,7 +55,14 @@ export default function Dashboard({
             scheduled_at: `${bookingDetails.date} ${bookingDetails.time}`, 
             problem_description: bookingDetails.notes || 'No details provided', 
         }, {
-            onSuccess: () => setSelectedRepairer(null),
+            onSuccess: () => {
+                alert("Success! Request sent.");
+                setSelectedRepairer(null);
+            },
+            onError: (errors) => {
+                console.error("Booking Failed:", errors);
+                alert("Failed: " + JSON.stringify(errors));
+            }
         });
     };
 
@@ -56,22 +74,22 @@ export default function Dashboard({
         history: history,
         topServices: topServices, 
         onRepairerSelect: handleRepairerSelect, 
-        onSwitchToWork: () => setIsWorkMode(true) 
+        
+        // 👇 PASS THE NEW SMART HANDLER
+        onSwitchToWork: handleSwitchToWorkMode 
     };
 
     // --- RENDER ---
 
-    // A. Repairer View
+    // A. Repairer View (Only shown if isWorkMode is true)
     if (isWorkMode) {
         return (
             <RepairerDashboard 
                 user={user} 
                 profile={profile}
-                // --- PASS THE MISSING DATA DOWN ---
-                jobs={jobs}              // <--- This was missing!
-                schedule={schedule}      // <--- This was missing!
+                jobs={jobs}
+                schedule={schedule}
                 isGoogleConnected={isGoogleConnected}
-                // ----------------------------------
                 onSwitchToCustomer={() => setIsWorkMode(false)} 
             />
         );
