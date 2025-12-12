@@ -32,105 +32,80 @@ Route::get('/login', function () {
 
 Route::get('/signup', [LandingController::class, 'indexRegister'])->name('register');
 
-// --- Auth Logic (POST) ---
+// --- Auth Logic ---
 Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
 // --- Google OAuth ---
 Route::get('/auth/google', [GoogleLoginController::class, 'redirectToGoogle'])->name('google.redirect');
 Route::get('/auth/google/callback', [GoogleLoginController::class, 'handleGoogleCallback'])->name('google.callback');
 
 // -----------------------------------------------------------
-// 2. EMAIL VERIFICATION PAGES
+// 2. AUTHENTICATED ROUTES
 // -----------------------------------------------------------
-
 Route::middleware(['auth'])->group(function () {
+
+  // --- Email Verification ---
   Route::get('/email/verify', function () {
     return Inertia::render('Auth/VerifyEmail');
   })->name('verification.notice');
-});
 
-Route::get('/email/verify/{id}/{hash}', function (Request $request) {
-  $user = User::find($request->route('id'));
-
-  if (! hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
-    abort(403);
-  }
-
-  if (! $user->hasVerifiedEmail()) {
-    if ($user->markEmailAsVerified()) {
-      event(new Verified($user));
+  Route::get('/email/verify/{id}/{hash}', function (Request $request) {
+    $user = User::find($request->route('id'));
+    if (! hash_equals((string) $request->route('hash'), sha1($user->getEmailForVerification()))) {
+      abort(403);
     }
-  }
+    if (! $user->hasVerifiedEmail()) {
+      if ($user->markEmailAsVerified()) {
+        event(new Verified($user));
+      }
+    }
+    Auth::login($user);
+    return redirect()->intended(route('dashboard'));
+  })->middleware(['signed'])->name('verification.verify');
 
-  Auth::login($user);
-  return redirect()->intended(route('dashboard'));
-})->middleware(['signed'])->name('verification.verify');
+  // --- Google Calendar ---
+  Route::get('/auth/calendar/connect', [GoogleCalendarController::class, 'connect'])->name('calendar.connect');
+  Route::get('/auth/calendar/callback', [GoogleCalendarController::class, 'callback'])->name('calendar.callback');
 
-// -----------------------------------------------------------
-// 3. PROTECTED APPLICATION ROUTESfunction
-// -----------------------------------------------------------
-
-Route::middleware(['auth'])->group(function () {
-
-  // --- A. ONBOARDING ROUTES ---
+  // -----------------------------------------------------------
+  // 3. ONBOARDING (Scenario A: New User)
+  // -----------------------------------------------------------
+  // This uses your OnboardingController exactly as you wrote it.
   Route::prefix('onboarding')
     ->middleware(['verified', 'throttle:6,1'])
     ->group(function () {
-      // 1. The Single Form (GET)
-      Route::get('/', [OnboardingController::class, 'showForm'])
-        ->name('onboarding.profile');
-
-      // 2. The Save Action (POST)
-      Route::post('/complete', [OnboardingController::class, 'store'])
-        ->name('onboarding.complete.store');
+      Route::get('/', [OnboardingController::class, 'showForm'])->name('onboarding.profile');
+      Route::post('/complete', [OnboardingController::class, 'store'])->name('onboarding.complete.store');
     });
 
-
-  Route::get('/auth/calendar/connect', [GoogleCalendarController::class, 'connect'])
-    ->name('calendar.connect');
-
-  // 2. The Return: Google sends them back here with the "Key"
-  Route::get('/auth/calendar/callback', [GoogleCalendarController::class, 'callback'])
-    ->name('calendar.callback');
-
-
-  Route::get('/repairer/availability', [RepairerAvailabilityController::class, 'edit'])->name('availability.edit');
-  Route::put('/repairer/availability', [RepairerAvailabilityController::class, 'update'])->name('availability.update');
-
-
-
-  // 1b. LOGOUT
-  Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
-
-  // ----------------------------------------------------------------------
-  // 2. DASHBOARD & FUNCTIONAL ROUTES (Requires Onboarding to be Done)
-  // ----------------------------------------------------------------------
+  // -----------------------------------------------------------
+  // 4. MAIN APP (Scenario B: Existing User)
+  // -----------------------------------------------------------
   Route::middleware([EnsureOnboardingComplete::class])->group(function () {
 
-    /**
-     * DASHBOARD
-     * ✅ FIX: Moved inside this group and pointing to the Controller
-     */
+    // --- DASHBOARD ---
     Route::get('/app', [DashboardController::class, 'index'])->name('dashboard');
-    /**
-     * BOOKINGS
-     * ✅ FIX: Added inside this group so only onboarded users can book
-     */
-    Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
 
-    /**
-     * SETTINGS
-     */
+    // --- BOOKINGS ---
+    Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
+    Route::post('/bookings/{id}/approve', [BookingController::class, 'approve'])->name('bookings.approve');
+    Route::post('/bookings/{id}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
+
+    // --- SETTINGS ---
     Route::get('/settings', function () {
       return Inertia::render('Settings');
     })->name('settings');
 
-    /**
-     * REPAIRER REGISTRATION
-     */
+    // --- REPAIRER UPGRADE (For existing customers) ---
+    // This is the "Become a Repairer" button for someone who is ALREADY a customer.
+    // It uses RepairerController, NOT OnboardingController.
     Route::get('/become-repairer', [RepairerController::class, 'create'])->name('repairer.create');
-    Route::post('/repairer/apply', [RepairerController::class, 'store'])->name('repairer.store');
-  }); // End OnboardingComplete Group
+    Route::post('/become-repairer', [RepairerController::class, 'store'])->name('repairer.store');
 
-}); // End Auth Group
+    // --- REPAIRER MANAGEMENT ---
+    Route::get('/repairer/availability', [RepairerAvailabilityController::class, 'edit'])->name('availability.edit');
+    Route::put('/repairer/availability', [RepairerAvailabilityController::class, 'update'])->name('availability.update');
+  });
+});

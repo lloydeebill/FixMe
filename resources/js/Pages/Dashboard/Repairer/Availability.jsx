@@ -15,8 +15,8 @@ export default function Availability({ auth, schedule }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // Sends a PUT request to the route we defined in web.php
-        put(route('availability.update'), {
+        // Replace route('availability.update') with the actual URL string
+        put('/repairer/availability', {
             preserveScroll: true,
         });
     };

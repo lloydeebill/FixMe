@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
-import { Head, router } from '@inertiajs/react'; // Use router for manual visits if needed
+import { Head, router } from '@inertiajs/react'; 
 import MobileDashboard from './Dashboard/MobileDashboard'; 
 import DesktopDashboard from './Dashboard/DesktopDashboard';
 import BookingModal from '../Components/BookingModal';
 import RepairerDashboard from './Dashboard/Repairer/RepairerDashboard';
 
-// 1. Accept ALL props from the Laravel Controller
-export default function Dashboard({ auth, isRepairer, profile, appointment, quickAccess, history, topServices }) {
+// 1. Accept ALL props from the Laravel Controller (Added jobs, schedule, etc.)
+export default function Dashboard({ 
+    auth, 
+    isRepairer, 
+    profile, 
+    appointment, 
+    quickAccess, 
+    history, 
+    topServices,
+    // --- NEW PROPS FROM CONTROLLER ---
+    jobs = [], 
+    schedule = [],
+    isGoogleConnected = false
+}) {
     
     const user = auth.user;
 
@@ -26,13 +38,10 @@ export default function Dashboard({ auth, isRepairer, profile, appointment, quic
     const handleBookingConfirm = (bookingDetails) => {
         if (!selectedRepairer) return;
 
-        // Post to the BookingController
         router.post('/bookings', {
             repairer_id: selectedRepairer.id,
             service_type: selectedRepairer.role,
             scheduled_at: `${bookingDetails.date} ${bookingDetails.time}`, 
-            
-            // 🛑 FIX: Rename 'notes' to 'problem_description'
             problem_description: bookingDetails.notes || 'No details provided', 
         }, {
             onSuccess: () => setSelectedRepairer(null),
@@ -40,13 +49,12 @@ export default function Dashboard({ auth, isRepairer, profile, appointment, quic
     };
 
     // --- SHARED DATA BUNDLE ---
-    // We wrap all data in one object to pass it easily
     const sharedProps = {
         user: user,
         appointment: appointment,
         quickAccess: quickAccess,
         history: history,
-        topServices: topServices, // <--- 2. Passing the DB data down
+        topServices: topServices, 
         onRepairerSelect: handleRepairerSelect, 
         onSwitchToWork: () => setIsWorkMode(true) 
     };
@@ -59,6 +67,11 @@ export default function Dashboard({ auth, isRepairer, profile, appointment, quic
             <RepairerDashboard 
                 user={user} 
                 profile={profile}
+                // --- PASS THE MISSING DATA DOWN ---
+                jobs={jobs}              // <--- This was missing!
+                schedule={schedule}      // <--- This was missing!
+                isGoogleConnected={isGoogleConnected}
+                // ----------------------------------
                 onSwitchToCustomer={() => setIsWorkMode(false)} 
             />
         );

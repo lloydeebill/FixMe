@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\RepairerAvailability;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+use Google\Client as GoogleClient;
+use Google\Service\Calendar as GoogleCalendar;
 
 class RepairerAvailabilityController extends Controller
 {
@@ -32,7 +35,7 @@ class RepairerAvailabilityController extends Controller
             });
         }
 
-        return Inertia::render('Repairer/Availability', [
+        return Inertia::render('Dashboard/Repairer/Availability', [
             'schedule' => $availabilities
         ]);
     }
@@ -65,5 +68,90 @@ class RepairerAvailabilityController extends Controller
         }
 
         return back()->with('success', 'Schedule updated successfully!');
+    }
+
+    public function checkAvailability(Request $request)
+    {
+        $request->validate(['date' => 'required|date']);
+
+        $user = Auth::user();
+
+        $repairerId = $user->repairerProfile->repairer_id;
+
+        $date = Carbon::parse($request->date);
+        $dayOfWeek = $date->dayOfWeek; // 0 (Sunday) to 6 (Saturday)
+
+        // 1. Get Standard Hours
+        $schedule = RepairerAvailability::where('repairer_profile_id', $repairerId)
+            ->where('day_of_week', $dayOfWeek)
+            ->where('is_active', true)
+            ->first();
+
+        if (!$schedule) {
+            return response()->json(['slots' => []]);
+        }
+
+        // 2. Fetch Google Events
+        // Note: Ensure 'google_access_token' is where you stored the token in your User table
+        $googleEvents = $this->fetchGoogleEvents($user, $date);
+
+        // 3. Generate Slots & Subtract Conflicts
+        $availableSlots = [];
+        $startTime = Carbon::parse($request->date . ' ' . $schedule->start_time);
+        $endTime = Carbon::parse($request->date . ' ' . $schedule->end_time);
+        $durationMinutes = 60; // Slot duration
+
+        while ($startTime->copy()->addMinutes($durationMinutes) <= $endTime) {
+            $slotEnd = $startTime->copy()->addMinutes($durationMinutes);
+
+            if (!$this->isOverlapping($startTime, $slotEnd, $googleEvents)) {
+                $availableSlots[] = $startTime->format('H:i');
+            }
+
+            $startTime->addMinutes($durationMinutes);
+        }
+
+        return response()->json(['slots' => $availableSlots]);
+    }
+
+    private function fetchGoogleEvents($user, $date)
+    {
+        $client = new GoogleClient();
+        // IMPORTANT: Ensure you are retrieving the token correctly here. 
+        // If you stored it in a separate table, adjust "$user->google_access_token"
+        $client->setAccessToken($user->google_calendar_token);
+
+        $service = new GoogleCalendar($client);
+        $calendarId = 'primary';
+
+        $optParams = [
+            'orderBy' => 'startTime',
+            'singleEvents' => true,
+            'timeMin' => $date->copy()->startOfDay()->toRfc3339String(),
+            'timeMax' => $date->copy()->endOfDay()->toRfc3339String(),
+        ];
+
+        try {
+            $results = $service->events->listEvents($calendarId, $optParams);
+            return $results->getItems();
+        } catch (\Exception $e) {
+            // If Google fails (e.g. token expired), return empty to avoid crashing
+            return [];
+        }
+    }
+
+    private function isOverlapping($slotStart, $slotEnd, $events)
+    {
+        foreach ($events as $event) {
+            if (empty($event->start->dateTime)) continue; // Skip all-day events
+
+            $eventStart = Carbon::parse($event->start->dateTime);
+            $eventEnd = Carbon::parse($event->end->dateTime);
+
+            if ($slotStart < $eventEnd && $slotEnd > $eventStart) {
+                return true;
+            }
+        }
+        return false;
     }
 }
