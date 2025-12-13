@@ -4,22 +4,32 @@ import { useForm, router } from '@inertiajs/react';
 export default function RepairerMobile({ 
     user, 
     profile, 
-    jobs = [], // <--- FIXED: Added default value here so it never crashes
-    earnings, 
+    jobs = [], 
+    schedule = [], 
+    isGoogleConnected = false,
     onApprove, 
     onReject,
     onSwitchToCustomer,
-    schedule = [], 
-    isGoogleConnected = false,
     onLogout
 }) {
+    // --- STATE MANAGEMENT ---
+    
+    // 1. Determine "Official" Schedule Status
+    // This is ONLY based on the saved data (props.schedule) or the successful save response.
+    // It ignores the temporary form data while you are clicking buttons.
+    const [isOnSchedule, setIsOnSchedule] = useState(
+        schedule && schedule.some(day => day.is_active)
+    );
+
     const [activeTab, setActiveTab] = useState('jobs');
 
-    // --- FORM LOGIC FOR AVAILABILITY ---
+    // --- FORM LOGIC ---
     const { data, setData, put, processing } = useForm({
-        // Safety check: ensure schedule is an array before using .length
         schedule: (schedule && schedule.length > 0) ? schedule : [] 
     });
+
+    // LOGIC: If Google is connected but user is "OFF SCHEDULE" (no saved hours), force 'schedule' view.
+    const currentView = (!isOnSchedule && isGoogleConnected) ? 'schedule' : activeTab;
 
     const updateDay = (index, field, value) => {
         const newSchedule = [...data.schedule];
@@ -30,31 +40,30 @@ export default function RepairerMobile({
     const saveSchedule = () => {
         put('/repairer/availability', {
             preserveScroll: true,
-            onSuccess: () => alert('Availability Saved!')
+            onSuccess: () => {
+                // 1. Calculate the NEW status based on what we just saved
+                const newStatus = data.schedule.some(day => day.is_active);
+                
+                // 2. UPDATE THE OFFICIAL STATUS (This flips the Header Badge)
+                setIsOnSchedule(newStatus);
+
+                // 3. Handle Navigation
+                if (currentView === 'schedule' && newStatus) {
+                    setActiveTab('jobs'); 
+                    alert('Setup Complete! You are now ON SCHEDULE.');
+                } else {
+                    alert('Availability Saved!');
+                }
+            }
         });
     };
 
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    // --- ACTIONS ---
-    const handleApprove = (id) => {
-        router.post(`/bookings/${id}/approve`, {}, {
-            onSuccess: () => console.log("Booking approved!")
-        });
-    };
-
-    const handleReject = (id) => {
-        if (confirm('Are you sure you want to reject this job?')) {
-             router.post(`/bookings/${id}/reject`);
-        }
-    };
-
-    // --- VIEW 1: JOBS ---
+    // --- RENDER HELPERS ---
     const renderJobsView = () => (
         <>
             <h2 className="text-lg font-bold text-gray-800 mb-4">Incoming Requests</h2>
-            
-            {/* Now safe because jobs defaults to [] if undefined */}
             {jobs.filter(job => job.status === 'pending').map(job => (
                 <div key={job.id} className="bg-white p-4 rounded-xl shadow-sm mb-4 border-l-4 border-yellow-400">
                     <div className="flex justify-between items-start mb-2">
@@ -84,7 +93,6 @@ export default function RepairerMobile({
                     </div>
                 </div>
             ))}
-
             {jobs.filter(job => job.status === 'pending').length === 0 && (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                     <p className="text-sm">No new requests</p>
@@ -93,36 +101,37 @@ export default function RepairerMobile({
         </>
     );
 
-    // ... (Rest of your code remains exactly the same)
-    // --- VIEW 2: SCHEDULE ---
     const renderScheduleView = () => (
         <div className="pb-24">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Availability & Sync</h2>
+            {/* Header Message: Changes based on isOnSchedule (Official Status) */}
+            {!isOnSchedule ? (
+                 <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl mb-6">
+                    <h2 className="text-lg font-bold text-yellow-800 mb-1">Set Working Hours</h2>
+                    <p className="text-sm text-yellow-700">You are currently <strong>Off Schedule</strong>. Enable days to start receiving jobs.</p>
+                 </div>
+            ) : (
+                <h2 className="text-lg font-bold text-gray-800 mb-4">Availability & Sync</h2>
+            )}
 
+            {/* Google Status */}
             {!isGoogleConnected ? (
                 <div className="bg-white p-6 rounded-xl shadow-sm mb-6 text-center">
                     <div className="bg-blue-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12.5 2C12.15 2 11.8 2.01 11.46 2.04L3 9.68V22H21V9.7L12.5 2M6 20V11.16L12.44 5.35L19 11.15V20H6M18 12V18H16V12H18M14 12V18H10V12H14M8 12V18H6V12H8Z" /></svg>
+                        📅
                     </div>
                     <h3 className="font-bold text-gray-900 mb-1">Sync with Google Calendar</h3>
-                    <p className="text-xs text-gray-500 mb-4">Avoid double bookings by syncing your personal calendar.</p>
-                    <a 
-                        href="/auth/calendar/connect"
-                        className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-md hover:bg-blue-700 transition-colors"
-                    >
-                        Connect Google Calendar
+                    <a href="/auth/calendar/connect" className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full text-sm font-bold mt-2">
+                        Connect Now
                     </a>
                 </div>
             ) : (
-                <div className="bg-green-50 border border-green-200 p-4 rounded-xl mb-6 flex items-center gap-3">
-                    <div className="bg-green-100 p-2 rounded-full">
-                        <svg className="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                // Only show "Connected" badge if user is OFFICIALY ON SCHEDULE
+                isOnSchedule && (
+                    <div className="bg-green-50 border border-green-200 p-3 rounded-xl mb-6 flex items-center gap-3">
+                        <div className="bg-green-100 p-1 rounded-full">✓</div>
+                        <p className="text-xs font-bold text-green-800">Google Calendar Synced</p>
                     </div>
-                    <div>
-                        <p className="text-sm font-bold text-green-800">Calendar Connected</p>
-                        <p className="text-xs text-green-600">Your bookings sync automatically.</p>
-                    </div>
-                </div>
+                )
             )}
 
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
@@ -172,34 +181,57 @@ export default function RepairerMobile({
                         disabled={processing}
                         className="w-full bg-black text-white py-3 rounded-lg font-bold shadow-lg hover:bg-gray-800 disabled:opacity-50"
                     >
-                        {processing ? 'Saving...' : 'Save Availability'}
+                        {processing ? 'Saving...' : (isOnSchedule ? 'Update Availability' : 'Set Schedule')}
                     </button>
                 </div>
             </div>
         </div>
     );
 
+    // 🛑 ONBOARDING STEP 1: Google Calendar
+    if (!isGoogleConnected) {
+        return (
+            <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8 text-center">
+                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mb-6">📅</div>
+                <h1 className="text-2xl font-black text-gray-900 mb-2">Welcome to FixMe!</h1>
+                <p className="text-gray-500 mb-8">To prevent double-bookings, connect your Google Calendar first.</p>
+                <a href="/auth/calendar/connect" className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-blue-700 transition-all">
+                    Connect Google Calendar
+                </a>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 pb-24 font-sans">
+            {/* Header */}
             <header className="bg-white p-5 sticky top-0 z-10 shadow-sm rounded-b-3xl">
-                 <div className="flex justify-between items-center mb-4">
+                 <div className="flex justify-between items-center">
                     <h1 className="text-xl font-black text-gray-800">
-                        {activeTab === 'jobs' ? profile?.business_name : 'My Schedule'}
+                        {currentView === 'jobs' ? profile?.business_name : 'My Schedule'}
                     </h1>
-                    <button className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">ONLINE</button>
+                    
+                    {/* THIS BADGE NOW ONLY CHANGES AFTER SAVE */}
+                    {isOnSchedule ? (
+                        <button className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase">ON SCHEDULE</button>
+                    ) : (
+                        <button className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide uppercase">OFF SCHEDULE</button>
+                    )}
                  </div>
             </header>
 
+            {/* Main Content */}
             <main className="px-5 mt-6">
-                {activeTab === 'jobs' && renderJobsView()}
-                {activeTab === 'schedule' && renderScheduleView()}
-                {activeTab === 'profile' && <div className="text-center py-10 text-gray-400">Profile Settings (Coming Soon)</div>}
+                {currentView === 'jobs' && renderJobsView()}
+                {currentView === 'schedule' && renderScheduleView()}
+                {currentView === 'profile' && <div className="text-center py-10 text-gray-400">Profile Settings</div>}
             </main>
 
+            {/* Bottom Nav */}
             <nav className="fixed bottom-0 w-full bg-white border-t border-gray-200 py-3 px-6 flex justify-between items-center text-xs font-medium text-gray-400 z-50">
                 <button 
-                    onClick={() => setActiveTab('jobs')}
-                    className={`flex flex-col items-center ${activeTab === 'jobs' ? 'text-black' : 'hover:text-gray-600'}`}
+                    onClick={() => isOnSchedule && setActiveTab('jobs')}
+                    className={`flex flex-col items-center ${currentView === 'jobs' ? 'text-black' : (isOnSchedule ? 'hover:text-gray-600' : 'opacity-30 cursor-not-allowed')}`}
                 >
                     <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                     Jobs
@@ -207,7 +239,7 @@ export default function RepairerMobile({
 
                 <button 
                     onClick={() => setActiveTab('schedule')}
-                    className={`flex flex-col items-center ${activeTab === 'schedule' ? 'text-black' : 'hover:text-gray-600'}`}
+                    className={`flex flex-col items-center ${currentView === 'schedule' ? 'text-black' : 'hover:text-gray-600'}`}
                 >
                     <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     Schedule
@@ -223,10 +255,7 @@ export default function RepairerMobile({
                     Switch
                 </button>
 
-                <button 
-                    onClick={onLogout}
-                    className="flex flex-col items-center hover:text-red-500 text-gray-400"
-                >
+                <button onClick={onLogout} className="flex flex-col items-center hover:text-red-500 text-gray-400">
                     <svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                     Logout
                 </button>

@@ -11,6 +11,8 @@ use Carbon\Carbon;
 use Google\Client as GoogleClient;
 use Google\Service\Calendar as GoogleCalendar;
 use Google\Service\Calendar\Event;
+use Inertia\Inertia;
+use App\Models\RepairerAvailability;
 
 class BookingController extends Controller
 {
@@ -33,6 +35,18 @@ class BookingController extends Controller
             ->where('scheduled_at', $startTime)
             ->where('status', 'confirmed')
             ->exists();
+
+        $dayName = Carbon::parse($request->scheduled_at)->format('w'); // Get "Wednesday"
+
+        $isAvailable = RepairerAvailability::where('repairer_profile_id', $request->repairer_id)
+
+            ->where('day_of_week', $dayName)
+            ->where('is_active', true)
+            ->exists();
+
+        if (!$isAvailable) {
+            return back()->withErrors(['scheduled_at' => 'This repairer is not available on this day.']);
+        }
 
         if ($exactCollision) {
             return back()->withErrors(['scheduled_at' => 'This time is already booked.']);
@@ -98,6 +112,14 @@ class BookingController extends Controller
         return redirect()->back()->with('message', 'Request declined.');
     }
 
+    public function showBookingForm(User $repairer)
+    {
+        return Inertia::render('Customer/BookJob', [
+            'repairer' => $repairer->load('repairerProfile.availabilities'),
+            // This sends the Wed=Off, Thu=1pm-5pm rules to React
+        ]);
+    }
+
     // --- HELPER: SYNC TO GOOGLE ---
     private function addToGoogleCalendar($booking, $repairerUser, $customer)
     {
@@ -142,6 +164,16 @@ class BookingController extends Controller
                 'end' => [
                     'dateTime' => $endStr,
                     'timeZone' => 'Asia/Manila', //  REQUIRED
+                ],
+                'attendees' => [
+                    ['email' => $customer->email],
+                ],
+                'reminders' => [
+                    'useDefault' => FALSE,
+                    'overrides' => [
+                        ['method' => 'email', 'minutes' => 24 * 60], // Email 1 day before
+                        ['method' => 'popup', 'minutes' => 30],      // Popup 30 mins before
+                    ],
                 ],
             ]);
 

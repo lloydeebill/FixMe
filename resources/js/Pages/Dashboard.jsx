@@ -49,9 +49,24 @@ export default function Dashboard({
     const handleBookingConfirm = (bookingDetails) => {
         if (!selectedRepairer) return;
 
+        // SAFELY ACCESS PROFILE DATA
+        // We use optional chaining (?.) in case profile is missing
+        const profileData = selectedRepairer.repairer_profile; 
+        
+        // 1. Get the correct Repairer ID (Not User ID)
+        const realRepairerId = profileData?.repairer_id;
+        
+        // 2. Get the correct Service Type (e.g. "Plumbing", not "repairer")
+        const realServiceType = profileData?.focus_area || 'General Repair';
+
+        if (!realRepairerId) {
+            alert("Error: Repairer profile not found.");
+            return;
+        }
+
         router.post('/bookings', {
-            repairer_id: selectedRepairer.id,
-            service_type: selectedRepairer.role,
+            repairer_id: realRepairerId, // ✅ Send Profile ID
+            service_type: realServiceType, // ✅ Send 'Plumbing' etc.
             scheduled_at: `${bookingDetails.date} ${bookingDetails.time}`, 
             problem_description: bookingDetails.notes || 'No details provided', 
         }, {
@@ -61,7 +76,8 @@ export default function Dashboard({
             },
             onError: (errors) => {
                 console.error("Booking Failed:", errors);
-                alert("Failed: " + JSON.stringify(errors));
+                // Helpful error alert for debugging
+                alert("Failed: " + Object.values(errors).join('\n')); 
             }
         });
     };
@@ -74,8 +90,6 @@ export default function Dashboard({
         history: history,
         topServices: topServices, 
         onRepairerSelect: handleRepairerSelect, 
-        
-        // 👇 PASS THE NEW SMART HANDLER
         onSwitchToWork: handleSwitchToWorkMode 
     };
 
