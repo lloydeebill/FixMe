@@ -46,7 +46,6 @@ class OnboardingController extends Controller
                 'date_of_birth' => $validated['date_of_birth'],
                 'gender' => $validated['gender'],
                 'location' => $validated['location'],
-                'isRepairer' => $request->boolean('is_repairer'),
             ]);
 
             if ($request->boolean('is_repairer')) {
@@ -58,6 +57,10 @@ class OnboardingController extends Controller
                         'bio' => $validated['bio'] ?? 'New Repairer',
                     ]
                 );
+            }else {
+                // OPTIONAL: If they uncheck the box, ensure no partial profile exists
+                // strict 3NF maintenance
+                $user->repairerProfile()->delete();
             }
         });
 
