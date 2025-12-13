@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Location;
 
 class RepairerProfile extends Model
 {
@@ -17,6 +18,7 @@ class RepairerProfile extends Model
 
     protected $fillable = [
         'user_id',
+        'location_id',
         'business_name',
         'focus_area',
         'bio',
@@ -46,5 +48,10 @@ class RepairerProfile extends Model
     public function availabilities(): HasMany
     {
         return $this->hasMany(RepairerAvailability::class, 'repairer_profile_id', 'repairer_id');
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
     }
 }

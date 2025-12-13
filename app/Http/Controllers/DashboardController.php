@@ -106,8 +106,8 @@ class DashboardController extends Controller
             'auth' => ['user' => $user],
             'isRepairer' => $user->isRepairer ?? false,
             'repairers' => User::where('user_id', '!=', Auth::id())
-                ->has('repairerProfile') // Only get actual repairers
-                ->with('repairerProfile') // Load the profile data
+                ->has('repairerProfile')
+                ->with(['repairerProfile.location']) // 👈 Eager load the location table
                 ->get(),
             'profile' => $user->repairerProfile,
 
