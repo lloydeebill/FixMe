@@ -7,7 +7,6 @@ import RepairerDashboard from './Dashboard/Repairer/RepairerDashboard';
 
 export default function Dashboard({ 
     auth, 
-    // isRepairer, // 👈 REMOVED: We use auth.user.is_repairer (since we appended it in the Model)
     profile, 
     appointment, 
     quickAccess, 
@@ -15,38 +14,27 @@ export default function Dashboard({
     topServices,
     jobs = [], 
     schedule = [],
-    repairers = [], // 👈 ADDED: Required to show the list of pros
+    repairers = [], 
     isGoogleConnected = false
 }) {
     
     const user = auth.user;
-    // Get the status directly from the user object (thanks to the $appends in User.php)
-    const isRepairer = user.is_repairer; 
+    // Assuming you have an accessor or simply check the role
+    const isRepairer = user.is_repairer || user.role === 'repairer'; 
 
-    // --- STATE ---
-    // Default to work mode ONLY if they are a repairer AND switched to it previously? 
-    // For now, defaulting to false (Customer Mode) is usually safer, 
-    // or pass a prop 'defaultMode' from controller.
     const [isWorkMode, setIsWorkMode] = useState(isRepairer);
     const [selectedRepairer, setSelectedRepairer] = useState(null);
 
     // --- LOGIC: FILTER REPAIRERS ---
-    // 🛑 We do this HERE so both Mobile/Desktop get the clean list
-    // 1. Remove myself (if I am a repairer)
-    // 2. (Optional) Remove anyone without a completed profile
     const availableRepairers = repairers.filter(repairer => 
         repairer.user_id !== user.user_id
     );
 
     // --- HANDLERS ---
-    
-    // 🛑 THE SMART SWITCH LOGIC
     const handleSwitchToWorkMode = () => {
         if (isRepairer) {
-            // Case A: They are already a pro -> Show the Dashboard
             setIsWorkMode(true);
         } else {
-            // Case B: They are just a customer -> Go to Registration Page
             router.get('/become-repairer');
         }
     };
@@ -63,28 +51,32 @@ export default function Dashboard({
         if (!selectedRepairer) return;
 
         // SAFELY ACCESS PROFILE DATA
-        // In your Controller, ensure you load repairers with: User::with('repairerProfile')->get()
+        // We eager loaded 'repairerProfile' and 'skills' in the Controller
         const profileData = selectedRepairer.repairer_profile; 
         
-        // 1. Get the correct Repairer ID
-        const realRepairerId = profileData?.repairer_id;
+        // 🛑 FIX 1: Get the Standard ID (Not repairer_id)
+        const realProfileId = profileData?.id;
         
-        // 2. Get the correct Service Type
-        const realServiceType = profileData?.focus_area || 'General Repair';
+        // 🛑 FIX 2: Get Service Type from Skills (Focus area is gone)
+        // If they have skills, pick the first one, otherwise default.
+        const firstSkill = profileData?.skills && profileData.skills.length > 0 
+            ? profileData.skills[0].name 
+            : 'General Repair';
 
-        if (!realRepairerId) {
+        if (!realProfileId) {
             alert("Error: Repairer profile not found.");
             return;
         }
 
         router.post('/bookings', {
-            repairer_id: realRepairerId, 
-            service_type: realServiceType, 
+            // 🛑 FIX 3: Send 'repairer_profile_id' to match Backend Validation
+            repairer_profile_id: realProfileId, 
+            service_type: firstSkill, 
             scheduled_at: `${bookingDetails.date} ${bookingDetails.time}`, 
             problem_description: bookingDetails.notes || 'No details provided', 
         }, {
             onSuccess: () => {
-                alert("Success! Request sent.");
+                // alert("Success! Request sent."); // Optional, flash message handles this usually
                 setSelectedRepairer(null);
             },
             onError: (errors) => {
@@ -101,19 +93,19 @@ export default function Dashboard({
         quickAccess: quickAccess,
         history: history,
         topServices: topServices, 
-        repairers: availableRepairers, // 👈 PASS THE FILTERED LIST HERE
+        repairers: availableRepairers,
         onRepairerSelect: handleRepairerSelect, 
         onSwitchToWork: handleSwitchToWorkMode 
     };
 
     // --- RENDER ---
 
-    // A. Repairer View (Only shown if isWorkMode is true)
+    // A. Repairer View
     if (isWorkMode) {
         return (
             <RepairerDashboard 
                 user={user} 
-                profile={profile} // Pass the specific profile data
+                profile={profile} 
                 jobs={jobs}
                 schedule={schedule}
                 isGoogleConnected={isGoogleConnected}

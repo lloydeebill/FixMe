@@ -6,20 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('repairer_availabilities', function (Blueprint $table) {
             $table->id();
 
-            // Foreign Key
-            $table->unsignedBigInteger('repairer_profile_id');
-            $table->foreign('repairer_profile_id')
-                ->references('repairer_id') // Make sure this column exists in repairer_profiles!
-                ->on('repairer_profiles')
-                ->onDelete('cascade');
+            // 👇 THE FIX: Use foreignId()
+            // This automatically looks for 'id' on the 'repairer_profiles' table.
+            // No more 'references repairer_id' manual errors!
+            $table->foreignId('repairer_profile_id')
+                ->constrained('repairer_profiles')
+                ->cascadeOnDelete();
 
             // 0 = Sunday, 1 = Monday, ... 6 = Saturday
             $table->unsignedTinyInteger('day_of_week');
@@ -31,12 +28,10 @@ return new class extends Migration
 
             $table->timestamps();
 
-            // 3NF BEST PRACTICE: 
-            // A repairer can only have ONE entry per day of the week.
+            // Constraint: A repairer can only have ONE entry per day of the week.
             $table->unique(['repairer_profile_id', 'day_of_week'], 'repairer_day_unique');
         });
     }
-
 
     public function down(): void
     {

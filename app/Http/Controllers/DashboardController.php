@@ -35,7 +35,7 @@ class DashboardController extends Controller
             if ($schedule->isEmpty()) {
                 $schedule = collect(range(0, 6))->map(function ($day) {
                     return [
-                        'day_of_week' => $day, // Ensure DB maps 0-6 to Mon-Sun correctly or use strings
+                        'day_of_week' => $day,
                         'start_time' => '09:00',
                         'end_time' => '17:00',
                         'is_active' => false,
@@ -43,8 +43,9 @@ class DashboardController extends Controller
                 });
             }
 
+            // 🛑 FIX: Use 'repairer_profile_id' and standard 'id'
             $jobs = Booking::with('customer')
-                ->where('repairer_id', $user->repairerProfile->repairer_id)
+                ->where('repairer_profile_id', $user->repairerProfile->id)
                 ->latest()
                 ->get();
         }
@@ -52,7 +53,8 @@ class DashboardController extends Controller
         // --- PREPARE CUSTOMER DATA (For the Customer Dashboard) ---
 
         // D. Fetch Next Appointment
-        $nextBooking = Booking::with('repairer.user')
+        // 🛑 FIX: Use 'repairerProfile' relationship instead of 'repairer'
+        $nextBooking = Booking::with('repairerProfile.user')
             ->where('customer_id', $user->user_id)
             ->where('status', 'confirmed')
             ->where('scheduled_at', '>=', now())
@@ -62,30 +64,35 @@ class DashboardController extends Controller
         $appointment = null;
         if ($nextBooking) {
             $date = \Carbon\Carbon::parse($nextBooking->scheduled_at);
+            // 🛑 FIX: Access user via repairerProfile relationship
+            $repairerName = $nextBooking->repairerProfile->user->name ?? 'Repairer';
+
             $appointment = [
                 'exists' => true,
                 'day' => $date->format('d'),
                 'month' => $date->format('M'),
                 'time' => $date->format('h:i A'),
                 'type' => $nextBooking->service_type,
-                'repairer' => $nextBooking->repairer->user->name ?? 'Repairer',
+                'repairer' => $repairerName,
                 'status' => $nextBooking->status,
             ];
         }
 
-        // E. Fetch Top Services (🛑 FIX APPLIED HERE)
-        // We fetch the PROFILE, but we Eager Load the USER and AVAILABILITIES
-        // E. Fetch Top Services (FIXED: Exclude Self)
-        $topServices = RepairerProfile::with(['user', 'availabilities'])
-            ->where('user_id', '!=', $user->user_id) // 🛑 ADD THIS LINE
+        // E. Fetch Top Services
+        // 🛑 FIX: Eager load 'skills' because 'focus_area' is gone
+        $topServices = RepairerProfile::with(['user', 'availabilities', 'skills'])
+            ->where('user_id', '!=', $user->user_id) // Exclude self
             ->latest()
             ->take(6)
             ->get()
             ->map(function ($profile) {
+                // 🛑 FIX: Get the first skill name to replace 'focus_area'
+                $mainSkill = $profile->skills->first()->name ?? 'General Repairer';
+
                 return [
-                    'id' => $profile->user->user_id, // Ensure we map the ID correctly
+                    'id' => $profile->user->user_id,
                     'name' => $profile->user->name ?? 'Unknown',
-                    'role' => $profile->focus_area,
+                    'role' => $mainSkill, // Used to be focus_area
                     'rating' => $profile->rating,
                     'image' => 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($profile->user->name ?? 'U'),
                     'repairer_profile' => $profile,
@@ -105,10 +112,13 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
             'isRepairer' => $user->isRepairer ?? false,
+
+            // 🛑 FIX: Eager load skills here too for the Map/List
             'repairers' => User::where('user_id', '!=', Auth::id())
                 ->has('repairerProfile')
-                ->with(['repairerProfile.location']) // 👈 Eager load the location table
+                ->with(['repairerProfile.location', 'repairerProfile.skills'])
                 ->get(),
+
             'profile' => $user->repairerProfile,
 
             // Repairer Props
@@ -120,7 +130,7 @@ class DashboardController extends Controller
             'appointment' => $appointment,
             'quickAccess' => $quickAccess,
             'history' => $history,
-            'topServices' => $topServices, // Now contains availability data!
+            'topServices' => $topServices,
         ]);
     }
 }

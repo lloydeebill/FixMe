@@ -6,7 +6,6 @@ export default function BookingModal({ repairer, onClose, onConfirm }) {
     const [notes, setNotes] = useState('');
     const [error, setError] = useState('');
 
-    // Access the schedule from the profile
     const availabilities = repairer?.repairer_profile?.availabilities || [];
 
     // --- LOGIC: CHECK IF DATE IS VALID ---
@@ -20,18 +19,29 @@ export default function BookingModal({ repairer, onClose, onConfirm }) {
             return;
         }
 
-        // 🛑 NEW: Convert selected date to 0-6 index (0=Sunday, 6=Saturday)
-        // This matches your new Database logic!
         const dateObj = new Date(selectedDate);
-        const dayIndex = dateObj.getDay(); // Returns 0, 1, 2... 6
+        
+        // 🛑 FIX: STRICT PAST DATE CHECK
+        // This stops manual typing of "2000" or yesterday
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to midnight for comparison
 
-        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+        // Fix for timezone offsets when creating date from YYYY-MM-DD string
+        // We create a date object specifically for the input's day
+        const inputDate = new Date(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
+        
+        if (inputDate < today) {
+            setError('You cannot select a date in the past.');
+            setDate(selectedDate);
+            return;
+        }
 
-        // Find the rule using the INTEGER index, not the string name
+        // --- Existing Day-of-Week Logic ---
+        const dayIndex = dateObj.getUTCDay(); // 0=Sun, 6=Sat
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+
         const dayRule = availabilities.find(a => parseInt(a.day_of_week) === dayIndex);
 
-        // Check availability
-        // If no rule exists, we assume CLOSED (Whitelist logic)
         if (!dayRule || !dayRule.is_active) {
             setError(`Repairer is not available on ${dayName}s.`);
             setDate(selectedDate);
@@ -45,17 +55,29 @@ export default function BookingModal({ repairer, onClose, onConfirm }) {
     const availableSlots = useMemo(() => {
         if (!date || error) return [];
 
-        const dayIndex = new Date(date).getDay();
+        const dateObj = new Date(date);
+        const dayIndex = dateObj.getUTCDay();
         const dayRule = availabilities.find(a => parseInt(a.day_of_week) === dayIndex);
 
         if (!dayRule || !dayRule.is_active) return [];
 
-        // Parse "09:00:00" -> 9
         const startHour = parseInt(dayRule.start_time.split(':')[0], 10);
         const endHour = parseInt(dayRule.end_time.split(':')[0], 10);
         
+        // Check if "Today"
+        const now = new Date();
+        // Compare strictly by YYYY-MM-DD
+        const isToday = date === now.toISOString().split('T')[0];
+        
+        const currentHour = now.getHours();
+
         const slots = [];
         for (let h = startHour; h < endHour; h++) {
+            // If it is today, skip hours that have passed
+            if (isToday && h <= currentHour) {
+                continue; 
+            }
+
             const hourString = h.toString().padStart(2, '0') + ':00';
             slots.push(hourString);
         }
@@ -63,7 +85,6 @@ export default function BookingModal({ repairer, onClose, onConfirm }) {
         return slots;
     }, [date, availabilities, error]);
 
-    // Helper: 13:00 -> 1:00 PM
     const formatTime = (time24) => {
         const [hour, minute] = time24.split(':');
         const h = parseInt(hour, 10);
@@ -97,7 +118,7 @@ export default function BookingModal({ repairer, onClose, onConfirm }) {
                         <input 
                             type="date" 
                             required
-                            min={new Date().toISOString().split('T')[0]}
+                            min={new Date().toISOString().split('T')[0]} // Blocks clicking past dates
                             className={`w-full rounded-xl font-medium border-2 ${error ? 'border-red-500 text-red-600' : 'border-gray-200 focus:border-black'}`}
                             value={date}
                             onChange={handleDateChange}
@@ -111,7 +132,8 @@ export default function BookingModal({ repairer, onClose, onConfirm }) {
                         {!date ? (
                             <p className="text-sm text-gray-400 italic">Please select a date first.</p>
                         ) : availableSlots.length === 0 ? (
-                            <p className="text-sm text-red-500 italic">No available slots for this day.</p>
+                            // Different messages depending on WHY slots are empty
+                            error ? null : <p className="text-sm text-red-500 italic">No available slots (Time has passed).</p>
                         ) : (
                             <div className="grid grid-cols-4 gap-2">
                                 {availableSlots.map(slot => (
