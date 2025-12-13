@@ -3,7 +3,7 @@ import { Head, useForm } from '@inertiajs/react';
 import RepairerFormFields from '@/Components/RepairerFormFields';
 import LocationPicker from '@/Components/LocationPicker'; // 👈 IMPORT THE MAP PICKER
 
-export default function OnboardingProfile({ auth }) {
+export default function OnboardingProfile({ auth, availableSkills }) {
     const [step, setStep] = useState(1);
     
     const { data, setData, post, processing, errors } = useForm({
@@ -20,7 +20,7 @@ export default function OnboardingProfile({ auth }) {
 
         // Repairer Specifics
         business_name: '',
-        focus_area: '',
+        skills: [],
         bio: '',
     });
 
@@ -58,9 +58,29 @@ export default function OnboardingProfile({ auth }) {
     };
 
     const handleFinalSubmit = (e) => {
-        e.preventDefault();
-        post('/onboarding/complete');
-    };
+    e.preventDefault();
+    
+    // Check if skills are selected (optional, but good practice)
+    if (data.skills.length === 0) {
+        alert("Please select at least one skill.");
+        return;
+    }
+
+    // 👇 Ensure a clean post call that expects a redirect
+    post('/onboarding/complete', {
+        // Adding onSuccess confirms the client side sees the successful response.
+        onSuccess: () => {
+             // If a redirect is successful, this code is usually skipped, 
+             // but if the backend sends a 200 response with a new page, 
+             // it should handle it. Since we expect a redirect, this is mainly for debugging.
+             console.log("Submission successful, redirecting...");
+        },
+        onError: (errors) => {
+             // If errors happen, this logs them.
+             console.error("Submission failed:", errors);
+        },
+    });
+};
 
     const goBack = () => {
         setStep(step - 1);
@@ -217,6 +237,7 @@ export default function OnboardingProfile({ auth }) {
                                 data={data} 
                                 setData={setData} 
                                 errors={errors} 
+                                availableSkills={availableSkills}
                             />
 
                             <div className="pt-4">
