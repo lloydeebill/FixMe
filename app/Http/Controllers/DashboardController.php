@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\RepairerProfile;
 use App\Models\Booking;
+use App\Models\User;
 
 class DashboardController extends Controller
 {
@@ -18,25 +19,23 @@ class DashboardController extends Controller
         // 1. Load Relationship for "Switch to Work Mode"
         $user->load('repairerProfile');
 
-        // --- PREPARE REPAIRER DATA ---
+        // --- PREPARE REPAIRER DATA (For the Pro Dashboard) ---
         $schedule = [];
         $jobs = [];
         $isGoogleConnected = false;
 
         if ($user->repairerProfile) {
-
-            // A. Check Google Calendar Status
             $isGoogleConnected = !empty($user->google_refresh_token);
 
-            // B. Fetch Availability Schedule
             $schedule = $user->repairerProfile->availabilities()
                 ->orderBy('day_of_week', 'asc')
                 ->get();
 
+            // Default schedule if empty
             if ($schedule->isEmpty()) {
                 $schedule = collect(range(0, 6))->map(function ($day) {
                     return [
-                        'day_of_week' => $day,
+                        'day_of_week' => $day, // Ensure DB maps 0-6 to Mon-Sun correctly or use strings
                         'start_time' => '09:00',
                         'end_time' => '17:00',
                         'is_active' => false,
@@ -44,17 +43,15 @@ class DashboardController extends Controller
                 });
             }
 
-            // C. FETCH JOBS (This was missing!)
-            // We fetch ALL jobs so the desktop table can show history too
             $jobs = Booking::with('customer')
                 ->where('repairer_id', $user->repairerProfile->repairer_id)
                 ->latest()
                 ->get();
         }
 
-        // --- PREPARE CUSTOMER DATA ---
+        // --- PREPARE CUSTOMER DATA (For the Customer Dashboard) ---
 
-        // D. Fetch Next Appointment (For the Customer Card)
+        // D. Fetch Next Appointment
         $nextBooking = Booking::with('repairer.user')
             ->where('customer_id', $user->user_id)
             ->where('status', 'confirmed')
@@ -63,10 +60,8 @@ class DashboardController extends Controller
             ->first();
 
         $appointment = null;
-
         if ($nextBooking) {
             $date = \Carbon\Carbon::parse($nextBooking->scheduled_at);
-
             $appointment = [
                 'exists' => true,
                 'day' => $date->format('d'),
@@ -78,18 +73,25 @@ class DashboardController extends Controller
             ];
         }
 
-        // E. Fetch Top Services
-        $topServices = RepairerProfile::with('user')
+        // E. Fetch Top Services (🛑 FIX APPLIED HERE)
+        // We fetch the PROFILE, but we Eager Load the USER and AVAILABILITIES
+        $topServices = RepairerProfile::with(['user', 'availabilities'])
             ->latest()
             ->take(6)
             ->get()
             ->map(function ($profile) {
+                // We construct an object that mimics the User structure 
+                // so your BookingModal works seamlessly.
                 return [
-                    'id' => $profile->repairer_id,
+                    'id' => $profile->user->id, // User ID (for unique keys)
                     'name' => $profile->user->name ?? 'Unknown',
                     'role' => $profile->focus_area,
                     'rating' => $profile->rating,
                     'image' => 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($profile->user->name ?? 'U'),
+
+                    // 👇 CRITICAL: Pass the profile WITH availabilities attached
+                    // Your BookingModal looks for: selectedRepairer.repairer_profile.availabilities
+                    'repairer_profile' => $profile,
                 ];
             });
 
@@ -111,13 +113,13 @@ class DashboardController extends Controller
             // Repairer Props
             'schedule' => $schedule,
             'isGoogleConnected' => $isGoogleConnected,
-            'jobs' => $jobs, // <--- Now fully populated!
+            'jobs' => $jobs,
 
             // Customer Props
             'appointment' => $appointment,
             'quickAccess' => $quickAccess,
             'history' => $history,
-            'topServices' => $topServices,
+            'topServices' => $topServices, // Now contains availability data!
         ]);
     }
 }

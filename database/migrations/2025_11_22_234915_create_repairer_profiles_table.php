@@ -21,6 +21,7 @@ return new class extends Migration
 
             $table->string('business_name')->nullable();
             $table->string('focus_area', 100);
+
             $table->text('bio')->nullable();
 
             $table->decimal('rating', 2, 1)->default(0.0);
