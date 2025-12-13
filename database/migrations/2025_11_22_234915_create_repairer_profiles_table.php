@@ -9,25 +9,29 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('repairer_profiles', function (Blueprint $table) {
-            // 1. Primary key for this table (This is the ONE auto column)
-            $table->id('repairer_id');
+            // 1. PRIMARY KEY: Standard 'id' (BigInt, Auto Increment)
+            // This allows other tables to link to it easily.
+            $table->id();
 
-            // 2. Define user_id as a simple unsigned big integer (matches users.user_id type)
-            // We use 'unsignedBigInteger' instead of 'foreignId' to prevent the auto-increment error.
+            // 2. FOREIGN KEY: Location
+            // Links to the 'locations' table
+            $table->foreignId('location_id')
+                ->nullable()
+                ->constrained('locations')
+                ->nullOnDelete();
+
+            // 3. FOREIGN KEY: User
+            // Links to 'users' table (explicitly using 'user_id' since your User model uses that)
             $table->unsignedBigInteger('user_id');
-
-            // 3. Set the Foreign Key Constraint
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
 
+            // 4. DATA COLUMNS
             $table->string('business_name')->nullable();
-            $table->string('focus_area', 100);
-
             $table->text('bio')->nullable();
-
             $table->decimal('rating', 2, 1)->default(0.0);
             $table->unsignedInteger('clients_helped')->default(0);
 
-            // Constraint: Ensure one user can only have one profile
+            // Constraint: One user can only have one repairer profile
             $table->unique('user_id');
 
             $table->timestamps();

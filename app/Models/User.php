@@ -9,7 +9,8 @@ use Illuminate\Notifications\Notifiable;
 use App\Notifications\VerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo; // 👈 Import this
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Location;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -17,15 +18,15 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $primaryKey = 'user_id';
 
-    // 1. APPENDS: Add 'id' so React doesn't break
     protected $appends = ['is_repairer', 'id'];
 
     protected $fillable = [
         'name',
         'email',
         'password',
+        'role', // 👈 ADDED: Necessary for OnboardingController to set 'repairer' vs 'customer'
         'gender',
-        'location_id', // ✅ CORRECT: This replaces the old 'location' string
+        'location_id',
         'date_of_birth',
         'google_calendar_token',
         'google_refresh_token',
@@ -52,7 +53,6 @@ class User extends Authenticatable implements MustVerifyEmail
 
     // --- RELATIONSHIPS ---
 
-    // ✅ CORRECT: Link to the new Location table
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
@@ -75,8 +75,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->repairerProfile()->exists();
     }
 
-    // 🛑 CRITICAL FIX: React expects 'id', but we have 'user_id'. 
-    // This creates a fake 'id' field in the JSON.
     public function getIdAttribute()
     {
         return $this->user_id;
@@ -86,15 +84,16 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function profileIsComplete(): bool
     {
-        // 🛑 UPDATE: Check 'location_id' instead of the old 'location' string
-        return $this->gender !== null && $this->location_id !== null;
+        // Added checks for name/DOB to be safe
+        return !empty($this->name) &&
+            !empty($this->gender) &&
+            !empty($this->location_id) &&
+            !empty($this->date_of_birth);
     }
 
     public function roleIsSelected(): bool
     {
-        // 🛑 CRITICAL FIX: The "Infinite Loop" Fix
-        // For customers, role is selected when their profile is complete.
-        // Do NOT check repairerProfile()->exists() here, or customers can never login.
+        // This logic is fine for now; essentially if the profile is filled, we assume they picked a role.
         return $this->profileIsComplete();
     }
 
@@ -102,12 +101,22 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $profile = $this->repairerProfile;
 
+        // 1. If not a repairer (no profile), they are "complete" as a customer.
         if (!$profile) {
-            return true; // Not a repairer, so details are "complete"
+            return true;
         }
 
-        return $profile->business_name !== null &&
-            $profile->focus_area !== null &&
-            $profile->business_name !== $this->name . ' Repairs';
+        // 2. Check Business Name
+        if (empty($profile->business_name)) {
+            return false;
+        }
+
+        // 3. 🛑 FIX: Check SKILLS instead of 'focus_area'
+        // We deleted focus_area, so we check if they have selected any skills.
+        if ($profile->skills()->count() === 0) {
+            return false;
+        }
+
+        return true;
     }
 }

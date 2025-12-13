@@ -1,50 +1,49 @@
 import React from 'react';
+import SkillSelector from '@/Components/SkillSelector'; // 👈 Import it
 
-export default function RepairerFormFields({ data, setData, errors }) {
+// Receive 'availableSkills' from the parent (which gets it from the Controller)
+export default function RepairerFormFields({ data, setData, errors, availableSkills }) {
+    
     return (
-        <div className="space-y-6">
-            {/* Business Name */}
+        <div className="space-y-5">
+            {/* 1. Business Name */}
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Business Name / Display Name</label>
+                <label className="block text-sm font-medium text-gray-700">Business / Display Name</label>
                 <input
                     type="text"
                     value={data.business_name}
                     onChange={(e) => setData('business_name', e.target.value)}
-                    className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="e.g. Manny's Electric or Manuel Reyes"
+                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="e.g. John's Fix-It"
                 />
                 {errors.business_name && <p className="text-red-500 text-xs mt-1">{errors.business_name}</p>}
             </div>
 
-            {/* Focus Area */}
+            {/* 2. SKILLS SELECTOR (Replaces the old dropdown) */}
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Main Skill (Focus Area)</label>
-                <select
-                    value={data.focus_area}
-                    onChange={(e) => setData('focus_area', e.target.value)}
-                    className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                >
-                    <option value="" disabled>Select your expertise...</option>
-                    <option value="Electrical">Electrical</option>
-                    <option value="Plumbing">Plumbing</option>
-                    <option value="Carpentry">Carpentry</option>
-                    <option value="Appliances">Appliances</option>
-                    <option value="Cleaning">Cleaning</option>
-                    <option value="Computer">Computer/IT</option>
-                </select>
-                {errors.focus_area && <p className="text-red-500 text-xs mt-1">{errors.focus_area}</p>}
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Your Skills <span className="text-gray-400 font-normal">(Pick at least one)</span>
+                </label>
+                
+                <SkillSelector 
+                    availableSkills={availableSkills || []} // Safety check
+                    selectedSkills={data.skills || []}      // Ensure 'skills' array exists in your useForm
+                    onChange={(newSkills) => setData('skills', newSkills)}
+                />
+                
+                {errors.skills && <p className="text-red-500 text-xs mt-1">{errors.skills}</p>}
             </div>
 
-            {/* Bio */}
+            {/* 3. Bio */}
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Short Bio</label>
+                <label className="block text-sm font-medium text-gray-700">Short Bio</label>
                 <textarea
+                    rows="3"
                     value={data.bio}
                     onChange={(e) => setData('bio', e.target.value)}
-                    rows="4"
-                    className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="Tell customers about your experience, certifications, or guarantees..."
-                ></textarea>
+                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    placeholder="Briefly describe your experience..."
+                />
                 {errors.bio && <p className="text-red-500 text-xs mt-1">{errors.bio}</p>}
             </div>
         </div>
