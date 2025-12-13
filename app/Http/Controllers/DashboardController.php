@@ -13,13 +13,12 @@ class DashboardController extends Controller
 {
     public function index()
     {
-        /** @var \App\Models\User $user */
-        $user = Auth::user();
+        // 1. Force a fresh User load with relationships
+        // This is safer than Auth::user()->load()
+        $user = User::with(['location', 'repairerProfile'])
+            ->find(Auth::id());
 
-        // 1. Load Relationship for "Switch to Work Mode"
-        $user->load('repairerProfile');
-
-        // --- PREPARE REPAIRER DATA (For the Pro Dashboard) ---
+        // --- PREPARE REPAIRER DATA ---
         $schedule = [];
         $jobs = [];
         $isGoogleConnected = false;
@@ -31,7 +30,6 @@ class DashboardController extends Controller
                 ->orderBy('day_of_week', 'asc')
                 ->get();
 
-            // Default schedule if empty
             if ($schedule->isEmpty()) {
                 $schedule = collect(range(0, 6))->map(function ($day) {
                     return [
@@ -43,17 +41,13 @@ class DashboardController extends Controller
                 });
             }
 
-            // 🛑 FIX: Use 'repairer_profile_id' and standard 'id'
             $jobs = Booking::with('customer')
                 ->where('repairer_profile_id', $user->repairerProfile->id)
                 ->latest()
                 ->get();
         }
 
-        // --- PREPARE CUSTOMER DATA (For the Customer Dashboard) ---
-
-        // D. Fetch Next Appointment
-        // 🛑 FIX: Use 'repairerProfile' relationship instead of 'repairer'
+        // --- PREPARE CUSTOMER DATA ---
         $nextBooking = Booking::with('repairerProfile.user')
             ->where('customer_id', $user->user_id)
             ->where('status', 'confirmed')
@@ -64,7 +58,6 @@ class DashboardController extends Controller
         $appointment = null;
         if ($nextBooking) {
             $date = \Carbon\Carbon::parse($nextBooking->scheduled_at);
-            // 🛑 FIX: Access user via repairerProfile relationship
             $repairerName = $nextBooking->repairerProfile->user->name ?? 'Repairer';
 
             $appointment = [
@@ -78,28 +71,26 @@ class DashboardController extends Controller
             ];
         }
 
-        // E. Fetch Top Services
-        // 🛑 FIX: Eager load 'skills' because 'focus_area' is gone
-        $topServices = RepairerProfile::with(['user', 'availabilities', 'skills'])
-            ->where('user_id', '!=', $user->user_id) // Exclude self
+        $topServices = RepairerProfile::with(['user.location', 'location', 'availabilities', 'skills'])
+            ->where('user_id', '!=', $user->user_id)
             ->latest()
             ->take(6)
             ->get()
             ->map(function ($profile) {
-                // 🛑 FIX: Get the first skill name to replace 'focus_area'
                 $mainSkill = $profile->skills->first()->name ?? 'General Repairer';
 
                 return [
                     'id' => $profile->user->user_id,
                     'name' => $profile->user->name ?? 'Unknown',
-                    'role' => $mainSkill, // Used to be focus_area
+                    // Pass the User Location if Profile Location is missing
+                    'location' => $profile->location ?? $profile->user->location,
+                    'role' => $mainSkill,
                     'rating' => $profile->rating,
                     'image' => 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($profile->user->name ?? 'U'),
                     'repairer_profile' => $profile,
                 ];
             });
 
-        // F. Static Data
         $quickAccess = [
             ['name' => 'Repairer', 'iconType' => 'repairer'],
             ['name' => 'Cleaning', 'iconType' => 'cleaning'],
@@ -111,22 +102,27 @@ class DashboardController extends Controller
         // 4. Return to React
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
+
+            // 🛑 CRITICAL FIX: Send location separately!
+            // This bypasses the middleware stripping issue.
+            'userLocation' => $user->location,
+
             'isRepairer' => $user->isRepairer ?? false,
 
-            // 🛑 FIX: Eager load skills here too for the Map/List
             'repairers' => User::where('user_id', '!=', Auth::id())
                 ->has('repairerProfile')
-                ->with(['repairerProfile.location', 'repairerProfile.skills'])
+                ->with([
+                    'location', // User location
+                    'repairerProfile.location', // Business location
+                    'repairerProfile.skills',
+                    'repairerProfile.availabilities'
+                ])
                 ->get(),
 
             'profile' => $user->repairerProfile,
-
-            // Repairer Props
             'schedule' => $schedule,
             'isGoogleConnected' => $isGoogleConnected,
             'jobs' => $jobs,
-
-            // Customer Props
             'appointment' => $appointment,
             'quickAccess' => $quickAccess,
             'history' => $history,

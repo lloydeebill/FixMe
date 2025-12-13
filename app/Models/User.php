@@ -10,6 +10,7 @@ use App\Notifications\VerifyEmail;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Location;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
