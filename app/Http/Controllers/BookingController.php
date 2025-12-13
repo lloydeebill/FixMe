@@ -26,6 +26,15 @@ class BookingController extends Controller
             'problem_description' => 'nullable|string',
         ]);
 
+        $targetProfile = RepairerProfile::findOrFail($validated['repairer_id']);
+
+        // Check: Is the owner of this profile (user_id) the same as the logged-in user?
+        if ($targetProfile->user_id === Auth::id()) {
+            return back()->withErrors([
+                'message' => 'You cannot book your own services! Switch to Repairer Mode to manage your schedule.'
+            ]);
+        }
+
         // Parse exactly what the user sent
         $startTime = \Carbon\Carbon::parse($validated['scheduled_at']);
         $endTime = $startTime->copy()->addHour();
@@ -36,16 +45,28 @@ class BookingController extends Controller
             ->where('status', 'confirmed')
             ->exists();
 
-        $dayName = Carbon::parse($request->scheduled_at)->format('w'); // Get "Wednesday"
+        $dayIndex = (int) \Carbon\Carbon::parse($request->scheduled_at)->format('w');
 
-        $isAvailable = RepairerAvailability::where('repairer_profile_id', $request->repairer_id)
+        // 2. CHECK: Did this repairer ever set up a schedule?
+        $hasSetSchedule = RepairerAvailability::where('repairer_profile_id', $request->repairer_id)->exists();
 
-            ->where('day_of_week', $dayName)
-            ->where('is_active', true)
-            ->exists();
+        if (!$hasSetSchedule) {
+            // A. FALLBACK: If DB is empty, assume default availability (e.g., Mon-Sun are OPEN)
+            // This matches the Dashboard's visual default.
+            $isAvailable = true;
+        } else {
+            // B. STANDARD: Check the database for specific rules
+            $isAvailable = RepairerAvailability::where('repairer_profile_id', $request->repairer_id)
+                ->where('day_of_week', $dayIndex)
+                ->where('is_active', true)
+                ->exists();
+        }
 
+        // 3. Trigger Error if not available
         if (!$isAvailable) {
-            return back()->withErrors(['scheduled_at' => 'This repairer is not available on this day.']);
+            // Helper to get day name for the error message
+            $dayName = \Carbon\Carbon::parse($request->scheduled_at)->format('l');
+            return back()->withErrors(['scheduled_at' => "This repairer is not available on {$dayName}s."]);
         }
 
         if ($exactCollision) {

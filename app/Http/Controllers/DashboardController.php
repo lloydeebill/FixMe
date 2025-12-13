@@ -75,22 +75,19 @@ class DashboardController extends Controller
 
         // E. Fetch Top Services (🛑 FIX APPLIED HERE)
         // We fetch the PROFILE, but we Eager Load the USER and AVAILABILITIES
+        // E. Fetch Top Services (FIXED: Exclude Self)
         $topServices = RepairerProfile::with(['user', 'availabilities'])
+            ->where('user_id', '!=', $user->user_id) // 🛑 ADD THIS LINE
             ->latest()
             ->take(6)
             ->get()
             ->map(function ($profile) {
-                // We construct an object that mimics the User structure 
-                // so your BookingModal works seamlessly.
                 return [
-                    'id' => $profile->user->id, // User ID (for unique keys)
+                    'id' => $profile->user->user_id, // Ensure we map the ID correctly
                     'name' => $profile->user->name ?? 'Unknown',
                     'role' => $profile->focus_area,
                     'rating' => $profile->rating,
                     'image' => 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($profile->user->name ?? 'U'),
-
-                    // 👇 CRITICAL: Pass the profile WITH availabilities attached
-                    // Your BookingModal looks for: selectedRepairer.repairer_profile.availabilities
                     'repairer_profile' => $profile,
                 ];
             });
@@ -108,6 +105,10 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
             'isRepairer' => $user->isRepairer ?? false,
+            'repairers' => User::where('user_id', '!=', Auth::id())
+                ->has('repairerProfile') // Only get actual repairers
+                ->with('repairerProfile') // Load the profile data
+                ->get(),
             'profile' => $user->repairerProfile,
 
             // Repairer Props

@@ -7,7 +7,7 @@ import RepairerDashboard from './Dashboard/Repairer/RepairerDashboard';
 
 export default function Dashboard({ 
     auth, 
-    isRepairer, 
+    // isRepairer, // 👈 REMOVED: We use auth.user.is_repairer (since we appended it in the Model)
     profile, 
     appointment, 
     quickAccess, 
@@ -15,25 +15,38 @@ export default function Dashboard({
     topServices,
     jobs = [], 
     schedule = [],
+    repairers = [], // 👈 ADDED: Required to show the list of pros
     isGoogleConnected = false
 }) {
     
     const user = auth.user;
+    // Get the status directly from the user object (thanks to the $appends in User.php)
+    const isRepairer = user.is_repairer; 
 
     // --- STATE ---
-    const [isWorkMode, setIsWorkMode] = useState(isRepairer); // Default to work mode if they logged in as repairer context
+    // Default to work mode ONLY if they are a repairer AND switched to it previously? 
+    // For now, defaulting to false (Customer Mode) is usually safer, 
+    // or pass a prop 'defaultMode' from controller.
+    const [isWorkMode, setIsWorkMode] = useState(isRepairer);
     const [selectedRepairer, setSelectedRepairer] = useState(null);
+
+    // --- LOGIC: FILTER REPAIRERS ---
+    // 🛑 We do this HERE so both Mobile/Desktop get the clean list
+    // 1. Remove myself (if I am a repairer)
+    // 2. (Optional) Remove anyone without a completed profile
+    const availableRepairers = repairers.filter(repairer => 
+        repairer.user_id !== user.user_id
+    );
 
     // --- HANDLERS ---
     
-    // 🛑 THE NEW SMART SWITCH LOGIC
+    // 🛑 THE SMART SWITCH LOGIC
     const handleSwitchToWorkMode = () => {
         if (isRepairer) {
             // Case A: They are already a pro -> Show the Dashboard
             setIsWorkMode(true);
         } else {
             // Case B: They are just a customer -> Go to Registration Page
-            // This matches your web.php route: name('repairer.create')
             router.get('/become-repairer');
         }
     };
@@ -50,13 +63,13 @@ export default function Dashboard({
         if (!selectedRepairer) return;
 
         // SAFELY ACCESS PROFILE DATA
-        // We use optional chaining (?.) in case profile is missing
+        // In your Controller, ensure you load repairers with: User::with('repairerProfile')->get()
         const profileData = selectedRepairer.repairer_profile; 
         
-        // 1. Get the correct Repairer ID (Not User ID)
+        // 1. Get the correct Repairer ID
         const realRepairerId = profileData?.repairer_id;
         
-        // 2. Get the correct Service Type (e.g. "Plumbing", not "repairer")
+        // 2. Get the correct Service Type
         const realServiceType = profileData?.focus_area || 'General Repair';
 
         if (!realRepairerId) {
@@ -65,8 +78,8 @@ export default function Dashboard({
         }
 
         router.post('/bookings', {
-            repairer_id: realRepairerId, // ✅ Send Profile ID
-            service_type: realServiceType, // ✅ Send 'Plumbing' etc.
+            repairer_id: realRepairerId, 
+            service_type: realServiceType, 
             scheduled_at: `${bookingDetails.date} ${bookingDetails.time}`, 
             problem_description: bookingDetails.notes || 'No details provided', 
         }, {
@@ -76,7 +89,6 @@ export default function Dashboard({
             },
             onError: (errors) => {
                 console.error("Booking Failed:", errors);
-                // Helpful error alert for debugging
                 alert("Failed: " + Object.values(errors).join('\n')); 
             }
         });
@@ -89,6 +101,7 @@ export default function Dashboard({
         quickAccess: quickAccess,
         history: history,
         topServices: topServices, 
+        repairers: availableRepairers, // 👈 PASS THE FILTERED LIST HERE
         onRepairerSelect: handleRepairerSelect, 
         onSwitchToWork: handleSwitchToWorkMode 
     };
@@ -100,7 +113,7 @@ export default function Dashboard({
         return (
             <RepairerDashboard 
                 user={user} 
-                profile={profile}
+                profile={profile} // Pass the specific profile data
                 jobs={jobs}
                 schedule={schedule}
                 isGoogleConnected={isGoogleConnected}
