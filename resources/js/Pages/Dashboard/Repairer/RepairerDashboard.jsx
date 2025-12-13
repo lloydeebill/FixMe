@@ -1,85 +1,84 @@
-import React, { useState } from 'react';
-import { Head } from '@inertiajs/react';
+import React, { useState, useEffect } from 'react';
+import { Head, router } from '@inertiajs/react';
 import RepairerMobile from './RepairerMobile';
 import RepairerDesktop from './RepairerDesktop';
 
-export default function RepairerDashboard({ user, profile, onSwitchToCustomer }) {
+export default function RepairerDashboard({ 
+    user, 
+    profile, 
+    jobs: initialJobs, 
+    schedule,
+    isGoogleConnected,
+    onSwitchToCustomer 
+}) {
+    const [jobs, setJobs] = useState(initialJobs);
+
+    useEffect(() => {
+        setJobs(initialJobs);
+    }, [initialJobs]);
+
+    // --- SHARED ACTIONS (Defined Once!) ---
     
-    // --- MOCK DATA (We will replace this with real database data later) ---
-    const [jobs, setJobs] = useState([
-        { 
-            id: 101, 
-            customer: "Juan dela Cruz", 
-            type: "Electrical", 
-            desc: "Outlet sparking when plugging in TV", 
-            location: "Davao City, Poblacion", 
-            distance: "2.5 km",
-            status: "pending", 
-            price: "₱500 est."
-        },
-        { 
-            id: 102, 
-            customer: "Maria Clara", 
-            type: "Plumbing", 
-            desc: "Kitchen sink leaking badly", 
-            location: "Matina, Davao", 
-            distance: "5.1 km",
-            status: "pending",
-            price: "₱850 est."
-        },
-    ]);
-
-    const [earnings, setEarnings] = useState(12500); 
-
-    // --- SHARED LOGIC ---
-    const handleAcceptJob = (jobId) => {
-        // Optimistic UI Update: Move to 'accepted' status immediately
-        setJobs(jobs.map(job => 
-            job.id === jobId ? { ...job, status: 'accepted' } : job
-        ));
-        alert("Job Accepted! (Simulated)");
-    };
-
-    const handleDeclineJob = (jobId) => {
-        if(confirm("Are you sure you want to decline this job?")) {
-            setJobs(jobs.filter(job => job.id !== jobId));
+    const handleApprove = (id) => {
+        if (confirm("Accept this job and sync to Google Calendar?")) {
+            router.post(`/bookings/${id}/approve`, {}, {
+                onSuccess: () => alert("Job Accepted & Synced!"),
+                onError: () => alert("Something went wrong.")
+            });
         }
     };
 
-    const handleGoOnline = (isOnline) => {
-        console.log("User is now:", isOnline ? "Online" : "Offline");
+    const handleReject = (id) => {
+        if (confirm('Are you sure you want to decline this request?')) {
+            router.post(`/bookings/${id}/reject`, {}, {
+                onSuccess: () => alert("Request declined."),
+                onError: () => alert("Something went wrong.")
+            });
+        }
     };
 
+    const refreshJobs = () => {
+        router.reload({ only: ['jobs'] });
+    };
+
+    const handleLogout = () => {
+        router.post('/logout'); 
+    };
     // --- RENDER ---
     return (
         <>
             <Head title="Work Dashboard" />
 
-            {/* 1. MOBILE VIEW (Visible on small screens) */}
+            {/* 1. MOBILE VIEW */}
             <div className="block md:hidden">
                 <RepairerMobile 
                     user={user} 
                     profile={profile} 
                     jobs={jobs}
-                    earnings={earnings}
-                    onAccept={handleAcceptJob}
-                    onDecline={handleDeclineJob}
-                    onToggleStatus={handleGoOnline}
+                    schedule={schedule}
+                    isGoogleConnected={isGoogleConnected}
                     onSwitchToCustomer={onSwitchToCustomer}
+                    onApprove={handleApprove} 
+                    onReject={handleReject}
+                    onRefresh={refreshJobs}
+                    onLogout={handleLogout} 
                 />
             </div>
 
-            {/* 2. DESKTOP VIEW (Visible on medium+ screens) */}
+            {/* 2. DESKTOP VIEW */}
             <div className="hidden md:block">
                 <RepairerDesktop 
                     user={user} 
                     profile={profile} 
                     jobs={jobs} 
-                    earnings={earnings}
-                    onAccept={handleAcceptJob}
-                    onDecline={handleDeclineJob}
-                    onToggleStatus={handleGoOnline}
+                    schedule={schedule}
+                    isGoogleConnected={isGoogleConnected}
                     onSwitchToCustomer={onSwitchToCustomer}
+                    // 👇 PASSING THE SHARED ACTIONS DOWN
+                    onApprove={handleApprove}
+                    onReject={handleReject}
+                    onLogout={handleLogout} 
+
                 />
             </div>
         </>

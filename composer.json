@@ -2,17 +2,18 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "laravel/laravel",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "The skeleton application for the Laravel framework app.",
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "google/apiclient": "^2.18",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/socialite": "^5.23",
         "laravel/tinker": "^2.10.1",
-        "symfony/brevo-mailer": "^7.4",
-        "symfony/http-client": "^7.4"
+        "symfony/brevo-mailer": "^7.0",
+        "symfony/http-client": "^7.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

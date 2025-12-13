@@ -1,103 +1,161 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
-const BookingModal = ({ repairer, onClose, onConfirm }) => {
+export default function BookingModal({ repairer, onClose, onConfirm }) {
     const [date, setDate] = useState('');
     const [time, setTime] = useState('');
-    const [issue, setIssue] = useState('');
+    const [notes, setNotes] = useState('');
+    const [error, setError] = useState('');
 
-    if (!repairer) return null;
+    // Access the schedule from the profile
+    const availabilities = repairer?.repairer_profile?.availabilities || [];
+
+    // --- LOGIC: CHECK IF DATE IS VALID ---
+    const handleDateChange = (e) => {
+        const selectedDate = e.target.value;
+        setError('');
+        setTime('');
+
+        if (!selectedDate) {
+            setDate('');
+            return;
+        }
+
+        // 🛑 NEW: Convert selected date to 0-6 index (0=Sunday, 6=Saturday)
+        // This matches your new Database logic!
+        const dateObj = new Date(selectedDate);
+        const dayIndex = dateObj.getDay(); // Returns 0, 1, 2... 6
+
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+        // Find the rule using the INTEGER index, not the string name
+        const dayRule = availabilities.find(a => parseInt(a.day_of_week) === dayIndex);
+
+        // Check availability
+        // If no rule exists, we assume CLOSED (Whitelist logic)
+        if (!dayRule || !dayRule.is_active) {
+            setError(`Repairer is not available on ${dayName}s.`);
+            setDate(selectedDate);
+            return; 
+        }
+
+        setDate(selectedDate);
+    };
+
+    // --- LOGIC: GENERATE TIME SLOTS ---
+    const availableSlots = useMemo(() => {
+        if (!date || error) return [];
+
+        const dayIndex = new Date(date).getDay();
+        const dayRule = availabilities.find(a => parseInt(a.day_of_week) === dayIndex);
+
+        if (!dayRule || !dayRule.is_active) return [];
+
+        // Parse "09:00:00" -> 9
+        const startHour = parseInt(dayRule.start_time.split(':')[0], 10);
+        const endHour = parseInt(dayRule.end_time.split(':')[0], 10);
+        
+        const slots = [];
+        for (let h = startHour; h < endHour; h++) {
+            const hourString = h.toString().padStart(2, '0') + ':00';
+            slots.push(hourString);
+        }
+
+        return slots;
+    }, [date, availabilities, error]);
+
+    // Helper: 13:00 -> 1:00 PM
+    const formatTime = (time24) => {
+        const [hour, minute] = time24.split(':');
+        const h = parseInt(hour, 10);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h % 12 || 12; 
+        return `${h12}:${minute} ${ampm}`;
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // Pass the booking details back to the parent
-        onConfirm({ ...repairer, date, time, issue });
+        if (error) return;
+        onConfirm({ date, time, notes });
     };
 
+    if (!repairer) return null;
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm transition-opacity">
-            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-fade-in-up">
                 
-                {/* Header with Repairer Info */}
-                <div className="bg-blue-600 p-6 text-white">
-                    <div className="flex justify-between items-start">
-                        <h2 className="text-2xl font-bold">Book Appointment</h2>
-                        <button onClick={onClose} className="text-white/80 hover:text-white">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                    <div className="mt-4 flex items-center gap-3">
-                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center text-xl font-bold">
-                            {repairer.name.charAt(0)}
-                        </div>
-                        <div>
-                            <p className="font-semibold text-lg">{repairer.name}</p>
-                            <p className="text-blue-100 text-sm flex items-center">
-                                <span className="text-yellow-300 mr-1">★ {repairer.rating}</span> 
-                                • {repairer.status}
-                            </p>
-                        </div>
-                    </div>
+                <div className="bg-black p-6 text-white text-center">
+                    <h3 className="text-xl font-bold">Request Service</h3>
+                    <p className="text-gray-400 text-sm">with {repairer.name}</p>
                 </div>
 
-                {/* Booking Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <form onSubmit={handleSubmit} className="p-6 space-y-5">
                     
-                    {/* Date & Time Row */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                            <input 
-                                type="date" 
-                                required
-                                className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                            <input 
-                                type="time" 
-                                required
-                                className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                                value={time}
-                                onChange={(e) => setTime(e.target.value)}
-                            />
-                        </div>
+                    {/* Date Picker */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Date</label>
+                        <input 
+                            type="date" 
+                            required
+                            min={new Date().toISOString().split('T')[0]}
+                            className={`w-full rounded-xl font-medium border-2 ${error ? 'border-red-500 text-red-600' : 'border-gray-200 focus:border-black'}`}
+                            value={date}
+                            onChange={handleDateChange}
+                        />
+                        {error && <p className="text-red-500 text-xs mt-2 font-bold">{error}</p>}
                     </div>
 
-                    {/* Issue Description */}
+                    {/* Time Slots */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">What's the problem?</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Available Times</label>
+                        {!date ? (
+                            <p className="text-sm text-gray-400 italic">Please select a date first.</p>
+                        ) : availableSlots.length === 0 ? (
+                            <p className="text-sm text-red-500 italic">No available slots for this day.</p>
+                        ) : (
+                            <div className="grid grid-cols-4 gap-2">
+                                {availableSlots.map(slot => (
+                                    <button
+                                        key={slot}
+                                        type="button"
+                                        onClick={() => setTime(slot)}
+                                        className={`py-2 rounded-lg text-xs font-bold border transition-all ${
+                                            time === slot 
+                                            ? 'bg-black text-white border-black transform scale-105' 
+                                            : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-50'
+                                        }`}
+                                    >
+                                        {formatTime(slot)}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Problem Description</label>
                         <textarea 
+                            className="w-full rounded-xl border-gray-200 focus:border-black focus:ring-black text-sm"
                             rows="3"
-                            placeholder="Briefly describe the repair needed..."
-                            className="w-full rounded-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                            value={issue}
-                            onChange={(e) => setIssue(e.target.value)}
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            placeholder="Describe the issue..."
                         ></textarea>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="pt-2 flex gap-3">
+                    <div className="flex gap-3 pt-4">
+                        <button type="button" onClick={onClose} className="flex-1 py-3 text-gray-600 font-bold hover:bg-gray-50 rounded-xl">Cancel</button>
                         <button 
-                            type="button" 
-                            onClick={onClose}
-                            className="flex-1 py-2.5 border border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition"
+                            type="submit" 
+                            disabled={!date || !time || !!error} 
+                            className="flex-1 py-3 bg-black text-white font-bold rounded-xl shadow-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit"
-                            className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 shadow-lg transition transform active:scale-95"
-                        >
-                            Confirm Booking
+                            Send Request
                         </button>
                     </div>
                 </form>
             </div>
         </div>
     );
-};
-
-export default BookingModal;
+}
