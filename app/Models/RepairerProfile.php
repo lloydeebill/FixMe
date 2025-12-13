@@ -6,13 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RepairerProfile extends Model
 {
     use HasFactory;
 
+    // Correct custom primary key
     protected $primaryKey = 'repairer_id';
-
 
     protected $fillable = [
         'user_id',
@@ -23,13 +24,12 @@ class RepairerProfile extends Model
         'clients_helped',
     ];
 
-
     /**
      * Get the User that owns the RepairerProfile.
      */
     public function user(): BelongsTo
     {
-        // Links this profile back to the User using the correct user_id column
+        // Links back to User using 'user_id' on both sides
         return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
@@ -38,15 +38,12 @@ class RepairerProfile extends Model
         return $this->belongsToMany(Skill::class, 'repairer_skill', 'repairer_profile_id', 'skill_id');
     }
 
-    // app/Models/RepairerProfile.php
-
-    public function bookingsAsRepairer()
+    public function bookingsAsRepairer(): HasMany
     {
         return $this->hasMany(Booking::class, 'repairer_id', 'repairer_id');
     }
 
-    // In App\Models\RepairerProfile.php
-    public function availabilities()
+    public function availabilities(): HasMany
     {
         return $this->hasMany(RepairerAvailability::class, 'repairer_profile_id', 'repairer_id');
     }
