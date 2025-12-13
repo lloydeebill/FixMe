@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Models\RepairerProfile;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\Location;
 
 class RepairerController extends Controller
 {
@@ -29,6 +31,9 @@ class RepairerController extends Controller
             'focus_area' => ['required', 'string', 'max:100'],
             'bio' => ['nullable', 'string', 'max:500'],
             'business_name' => ['required', 'string', 'max:30'],
+            'address_text'  => ['nullable', 'string', 'max:255'],
+            'latitude'      => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'     => ['nullable', 'numeric', 'between:-180,180'],
         ]);
 
         /** @var \App\Models\User $user */
@@ -39,23 +44,28 @@ class RepairerController extends Controller
             return redirect()->route('dashboard')->with('error', 'You already have a repairer profile.');
         }
 
-        // 3. Create the Repairer Profile
-        // This is the ONLY step needed. The existence of this row makes them a repairer.
-        RepairerProfile::create([
-            'user_id' => $user->user_id, // Uses your custom primary key
-            'focus_area' => $request->focus_area,
-            'business_name' => $request->business_name,
-            'bio' => $request->bio,
-            // Default values for new profiles
-            'rating' => 0,
-            'clients_helped' => 0,
-        ]);
+        DB::transaction(function () use ($request, $user) {
 
-        // ❌ DELETED: $user->isRepairer = true; 
-        // ❌ DELETED: $user->save(); 
-        // We do not update the User model anymore.
+            // A. Create Location First
+            $location = Location::create([
+                'address'   => $request->address_text,
+                'latitude'  => $request->latitude,
+                'longitude' => $request->longitude,
+            ]);
 
-        // 4. Redirect back to dashboard
+            // B. Create Profile Linked to Location
+            RepairerProfile::create([
+                'user_id'       => $user->user_id,
+                'location_id'   => $location->id, // 🔗 The Link
+                'focus_area'    => $request->focus_area,
+                'business_name' => $request->business_name,
+                'bio'           => $request->bio,
+                'rating'        => 0,
+                'clients_helped' => 0,
+            ]);
+        });
+
+
         return redirect()->route('dashboard')->with('success', 'Congratulations! Your Repairer Profile is now active.');
     }
 }
