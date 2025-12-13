@@ -6,18 +6,38 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-
-    //Run the migrations;
-
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->id('user_id');
+            // 1. Identity & Auth
+            $table->id('user_id'); // Primary Key
             $table->string('name');
             $table->string('email')->unique();
             $table->string('password');
+
+            // 2. Personal Profile (Consolidated)
+            $table->date('date_of_birth')->nullable();
+            $table->string('gender')->nullable();
+
+            // 3. Location (3NF Foreign Key)
+            // ⚠️ IMPORTANT: 'locations' migration file must have an earlier date/timestamp than this file!
+            $table->foreignId('location_id')
+                ->nullable()
+                ->constrained('locations')
+                ->nullOnDelete();
+
+            // 4. Google Integrations (Consolidated)
+            $table->text('google_calendar_token')->nullable(); // Access Token
+            $table->text('google_refresh_token')->nullable();  // Refresh Token
+
+            // 5. System
             $table->rememberToken();
             $table->timestamps();
         });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
     }
 };
