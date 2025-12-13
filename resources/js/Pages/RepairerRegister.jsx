@@ -9,7 +9,12 @@ export default function RepairerRegister({ auth }) {
         business_name: '',
         focus_area: 'Repairer', // Default value
         bio: '',
+        address_text: '',
+        latitude: null,
+        longitude: null,
     });
+
+    const [locationStatus, setLocationStatus] = useState('idle'); // idle | loading | success
 
     const submit = (e) => {
         e.preventDefault();
@@ -19,6 +24,43 @@ export default function RepairerRegister({ auth }) {
             onSuccess: () => alert('Welcome to the team!'),
             onError: (err) => console.log(err), // Helpful for debugging
         });
+    };
+
+    const handleGetLocation = () => {
+        if (!navigator.geolocation) {
+            alert("Geolocation is not supported by your browser");
+            return;
+        }
+        setLocationStatus('loading');
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                // Update Form Data
+                setData(previousData => ({
+                    ...previousData,
+                    latitude: lat,
+                    longitude: lng
+                }));
+
+                // Optional: Auto-fill address text using Free Nominatim API
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        setData(previousData => ({
+                            ...previousData,
+                            address_text: data.display_name // Auto-fill the text box
+                        }));
+                        setLocationStatus('success');
+                    });
+            },
+            (error) => {
+                setLocationStatus('error');
+                alert("Could not get location. Please type address manually.");
+            }
+        );
     };
 
     return (
