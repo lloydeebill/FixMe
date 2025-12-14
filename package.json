@@ -7,11 +7,14 @@
         "dev": "vite"
     },
     "devDependencies": {
+        "@laravel/echo-react": "^2.2.6",
         "@tailwindcss/vite": "^4.0.0",
         "@vitejs/plugin-react": "^5.1.1",
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",
+        "laravel-echo": "^2.2.6",
         "laravel-vite-plugin": "^2.0.0",
+        "pusher-js": "^8.4.0",
         "react": "^19.2.0",
         "react-dom": "^19.2.0",
         "tailwindcss": "^4.0.0",
@@ -19,10 +22,9 @@
     },
     "dependencies": {
         "@inertiajs/react": "^2.2.18",
-        "react-icons": "^5.5.0",
-        "three": "^0.182.0",
         "leaflet": "^1.9.4",
         "react-icons": "^5.5.0",
-        "react-leaflet": "^5.0.0"
+        "react-leaflet": "^5.0.0",
+        "three": "^0.182.0"
     }
 }

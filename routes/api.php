@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OnboardingController; // ⬅️ Add this import!
+use App\Http\Controllers\ChatController;
 
 // This test route is safe to keep!
 Route::get('/test', function () {
@@ -33,4 +34,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/onboarding/repairer-details', [OnboardingController::class, 'saveRepairerDetails'])
         ->name('onboarding.repairer-details.store');
+
+    Route::get('/bookings/{id}/messages', [ChatController::class, 'fetchMessages']);
+
+    // Send a message for a job
+    Route::post('/bookings/{id}/messages', [ChatController::class, 'sendMessage']);
 });
