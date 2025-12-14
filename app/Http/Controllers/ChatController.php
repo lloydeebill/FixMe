@@ -5,63 +5,77 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Conversation;
 use App\Models\Message;
-use App\Events\MessageSent;
+use App\Events\NewMessage; // Use the correct Event name
 use App\Models\Booking;
-use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class ChatController extends Controller
 {
-    // 1. Get all messages for a specific job (Booking)
+    // 1. Get messages
     public function fetchMessages($bookingId)
     {
-        // Find the conversation linked to this booking
         $conversation = Conversation::where('booking_id', $bookingId)->first();
 
-        // If no chat starts yet, return empty list
         if (!$conversation) {
             return response()->json([]);
         }
 
-        // Return messages with the sender info (so we know who is who)
+        // Return messages with the sender info so the UI can show names/avatars
         return response()->json($conversation->messages()->with('sender')->get());
     }
 
-    // 2. Send a new message
+    // 2. Send message
     public function sendMessage(Request $request, $bookingId)
     {
-        $user = auth()->user();
-
-        // Validation (Basic)
         $request->validate(['message' => 'required|string']);
+        $user = Auth::user();
 
-        // Find the booking to know who the OTHER person is
-        $booking = Booking::findOrFail($bookingId);
+        // A. Identify the Booking and the Participants
+        // We MUST use 'with' to grab the linked profile, then the linked user
+        $booking = Booking::with('repairerProfile')->findOrFail($bookingId);
 
-        // Determine who is the receiver
-        // If I am the customer, receiver is the provider. If I am provider, receiver is customer.
-        $receiverId = ($booking->user_id === $user->id)
-            ? $booking->provider_id // Assuming your Booking table has 'provider_id' (or 'repairer_id')
-            : $booking->user_id;
+        // 1. Get Customer ID (Easy, it's right there)
+        $customerUserId = $booking->customer_id;
 
-        // 1. Find or Create the Conversation Room
+        // 2. Get Repairer User ID (Harder, we must go through the profile)
+        // logic: Booking -> RepairerProfile -> user_id
+        if (!$booking->repairerProfile) {
+            return redirect()->back()->withErrors(['message' => 'No repairer assigned yet.']);
+        }
+        $repairerUserId = $booking->repairerProfile->user_id;
+
+        // B. Determine Receiver
+        // We check against the current user's ID
+        if ($user->user_id == $customerUserId) {
+            // I am the Customer -> Send to the Repairer's USER ID (not profile ID)
+            $receiverId = $repairerUserId;
+        } else {
+            // I am the Repairer -> Send to the Customer
+            $receiverId = $customerUserId;
+        }
+        // C. Find or Create the Conversation Room (Based on Booking ID)
         $conversation = Conversation::firstOrCreate(
             ['booking_id' => $bookingId],
             [
+                // These run only if creating a NEW conversation
                 'sender_id' => $user->id,
                 'receiver_id' => $receiverId
             ]
         );
 
-        // 2. Save the Message
+        // D. Create the Message in DB
         $message = Message::create([
             'conversation_id' => $conversation->id,
             'sender_id' => $user->id,
             'content' => $request->message
         ]);
 
-        // 3. Broadcast to Pusher (Real-time magic)
-        broadcast(new MessageSent($message))->toOthers();
+        // E. Load sender info for the frontend
+        $message->load('sender');
 
-        return response()->json(['status' => 'Message Sent!', 'message' => $message]);
+        // F. Broadcast! (Pass the message AND the calculated receiverId)
+        broadcast(new NewMessage($message, $receiverId))->toOthers();
+
+        return redirect()->back();
     }
 }

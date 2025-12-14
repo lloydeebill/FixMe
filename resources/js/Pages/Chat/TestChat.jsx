@@ -6,6 +6,9 @@ export default function TestChat({ booking, currentUser, initialMessages }) {
     const [messages, setMessages] = useState(initialMessages);
     const messagesEndRef = useRef(null);
 
+    useEffect(() => {
+    setMessages(initialMessages);
+    }, [initialMessages]);
     // 2. Setup the Inertia Form
     const { data, setData, post, reset, processing } = useForm({
         message: '',
@@ -25,8 +28,8 @@ export default function TestChat({ booking, currentUser, initialMessages }) {
     useEffect(() => {
         console.log(`Attempting to connect to channel: messages.${currentUser.id}`);
 
-        // This listener connects to your private channel
-        window.Echo.private(`messages.${currentUser.id}`)
+        const myUserId = currentUser.id || currentUser.user_id;
+        window.Echo.private(`messages.${myUserId}`)
             .listen('.message.sent', (e) => {
                 console.log('Real-time message received:', e.message);
                 
@@ -78,8 +81,7 @@ export default function TestChat({ booking, currentUser, initialMessages }) {
                     )}
                     
                     {messages.map((msg, index) => {
-                        const isMe = msg.sender_id === currentUser.id;
-                        return (
+                    const isMe = msg.sender_id === (currentUser.id || currentUser.user_id);                        return (
                             <div key={msg.id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xs px-4 py-2 rounded-lg shadow-sm ${
                                     isMe 
