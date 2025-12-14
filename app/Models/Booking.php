@@ -39,4 +39,9 @@ class Booking extends Model
     // and link it to the RepairerProfile class (which uses standard 'id' now)
     return $this->belongsTo(RepairerProfile::class, 'repairer_profile_id');
   }
+
+  public function conversation()
+  {
+    return $this->hasOne(Conversation::class);
+  }
 }

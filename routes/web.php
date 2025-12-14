@@ -17,6 +17,9 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RepairerAvailabilityController;
 use App\Http\Controllers\GoogleCalendarController;
+use App\Models\Conversation;
+use App\Models\Booking;
+use App\Http\Controllers\ChatController;
 
 // -----------------------------------------------------------
 // 1. PUBLIC FACING PAGES
@@ -107,5 +110,31 @@ Route::middleware(['auth'])->group(function () {
     // --- REPAIRER MANAGEMENT ---
     Route::get('/repairer/availability', [RepairerAvailabilityController::class, 'edit'])->name('availability.edit');
     Route::put('/repairer/availability', [RepairerAvailabilityController::class, 'update'])->name('availability.update');
+
+    Route::get('/test-chat/{bookingId}', function ($bookingId) {
+      $booking = Booking::findOrFail($bookingId);
+      $user = Auth::user();
+
+      // Security Check: Only allow participants
+      if ($user->id !== $booking->customer_id && $user->id !== $booking->repairerProfile->user_id) {
+        abort(403);
+      }
+
+      // Fetch messages eagerly
+      $conversation = Conversation::with(['messages.sender'])
+        ->where('booking_id', $bookingId)
+        ->first();
+
+      return Inertia::render('Chat/TestChat', [
+        'booking' => $booking,
+        'currentUser' => $user,
+        'initialMessages' => $conversation ? $conversation->messages : []
+      ]);
+    })->name('chat.test');
+
+    // 2. The API Endpoints (Used by the form to send data)
+    // Note: We define these in web.php so they share the user session automatically
+    Route::post('/api/messages/{bookingId}', [ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::get('/api/messages/{bookingId}', [ChatController::class, 'fetchMessages'])->name('chat.fetch');
   });
 });

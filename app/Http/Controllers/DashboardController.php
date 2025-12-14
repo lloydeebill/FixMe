@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\RepairerProfile;
 use App\Models\Booking;
 use App\Models\User;
+use App\Models\Conversation;
 
 class DashboardController extends Controller
 {
@@ -99,6 +100,48 @@ class DashboardController extends Controller
         ];
         $history = ['lastJob' => 'Welcome!', 'count' => 0];
 
+        $conversations = Booking::with(['conversation.messages' => function ($query) {
+            $query->latest()->limit(1);
+        }, 'customer', 'repairerProfile.user'])
+            // 1. Get bookings where I am the CUSTOMER
+            ->where('customer_id', $user->user_id)
+            // 2. OR bookings where I am the REPAIRER (via profile)
+            ->orWhereHas('repairerProfile', function ($q) use ($user) {
+                $q->where('user_id', $user->user_id);
+            })
+            ->latest() // Show newest jobs first
+            ->get()
+            ->map(function ($booking) use ($user) {
+
+                // A. Determine the "Other Person"
+                $isMeCustomer = $booking->customer_id === $user->user_id;
+
+                if ($isMeCustomer) {
+                    // I am Customer, show Repairer Name
+                    $otherUserName = $booking->repairerProfile->business_name ?? $booking->repairerProfile->user->name ?? 'Repairer';
+                } else {
+                    // I am Repairer, show Customer Name
+                    $otherUserName = $booking->customer->name ?? 'Customer';
+                }
+
+                // B. Check if a real conversation exists yet
+                $chat = $booking->conversation;
+                $lastMsg = $chat ? $chat->messages->first() : null;
+
+                // C. Build the Chat Card Data
+                return [
+                    'id' => $chat ? $chat->id : 'new_' . $booking->id, // Fake ID if new
+                    'booking_id' => $booking->id,
+                    'other_user_name' => $otherUserName,
+                    'service_type' => $booking->service_type,
+
+                    // IF message exists, show it. IF NOT, show prompt.
+                    'last_message_content' => $lastMsg ? $lastMsg->content : 'Booking confirmed. Tap to chat!',
+                    'last_message_time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : $booking->created_at->diffForHumans(),
+                    'unread_count' => 0,
+                ];
+            });
+
         // 4. Return to React
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
@@ -127,6 +170,7 @@ class DashboardController extends Controller
             'quickAccess' => $quickAccess,
             'history' => $history,
             'topServices' => $topServices,
+            'conversations' => $conversations
         ]);
     }
 }

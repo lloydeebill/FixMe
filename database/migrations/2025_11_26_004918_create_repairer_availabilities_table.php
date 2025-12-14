@@ -11,9 +11,7 @@ return new class extends Migration
         Schema::create('repairer_availabilities', function (Blueprint $table) {
             $table->id();
 
-            // 👇 THE FIX: Use foreignId()
-            // This automatically looks for 'id' on the 'repairer_profiles' table.
-            // No more 'references repairer_id' manual errors!
+
             $table->foreignId('repairer_profile_id')
                 ->constrained('repairer_profiles')
                 ->cascadeOnDelete();

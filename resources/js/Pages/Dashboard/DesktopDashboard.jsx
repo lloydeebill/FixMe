@@ -3,8 +3,6 @@ import { Head, router } from '@inertiajs/react';
 
 // --- HELPER: Render Icon based on Category ---
 const renderCategoryIcon = (iconChar) => {
-    // We are passing Emojis now from Dashboard.jsx, so we just render them.
-    // If you want SVGs later, you can map them here.
     return <span className="text-3xl">{iconChar}</span>;
 };
 
@@ -18,16 +16,121 @@ const DesktopDashboard = ({
     onSelectCategory, 
     repairers, 
     onRepairerSelect,
-    topServices,
+    topServices, // 👈 Kept!
     
-    onSwitchToWork 
+    onSwitchToWork,
+    conversations = [] // 👈 Kept!
 }) => {
     
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    
+    // 1. NEW STATE: Toggle between 'browse' and 'chats'
+    const [activeTab, setActiveTab] = useState('browse');
 
     const handleLogout = () => {
         router.post('/logout');
     };
+
+    const handleOpenChat = (bookingId) => {
+        router.visit(`/test-chat/${bookingId}`);
+    };
+
+    // Calculate unread messages for badge
+    const unreadCount = conversations.filter(c => c.unread_count > 0).length;
+
+
+    // --- VIEW HELPERS ---
+
+    // 1. Render Top Services List
+    const renderTopServices = () => (
+        <div className="animate-fade-in-up delay-100">
+            <div className="flex justify-between items-end mb-4">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <span className="bg-yellow-100 text-yellow-600 p-1 rounded">⭐</span> Top Services
+                </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {topServices && topServices.length > 0 ? (
+                    topServices.map((service, index) => (
+                        <div 
+                            key={index} 
+                            onClick={() => onRepairerSelect(service)} 
+                            className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group"
+                        >
+                            <div className="flex p-4 gap-4">
+                                <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
+                                    <img src={service.image} alt={service.role} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                </div>
+                                <div className="flex-1 flex flex-col justify-center">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-bold text-gray-900 text-lg">{service.role}</h3>
+                                            <p className="text-sm text-gray-500">{service.name}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
+                                            <span className="text-yellow-500 text-xs">★</span>
+                                            <span className="font-bold text-xs text-gray-700">{service.rating}</span>
+                                        </div>
+                                    </div>
+                                    <button className="mt-3 text-left text-xs font-bold text-[#1b6ed1] uppercase tracking-wide group-hover:underline">
+                                        Book Now →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="col-span-2 bg-white p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-500">
+                        No top services available.
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
+    // 2. Render Chat List
+    const renderChatsView = () => (
+        <div className="animate-fade-in-up">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="bg-blue-100 text-blue-600 p-1 rounded">💬</span> Your Conversations
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {conversations.length === 0 ? (
+                    <div className="col-span-2 text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
+                        <p className="text-gray-400 text-lg">No messages yet.</p>
+                        <button onClick={() => setActiveTab('browse')} className="mt-4 text-blue-600 font-bold hover:underline">Find a Repairer to Chat</button>
+                    </div>
+                ) : (
+                    conversations.map(chat => (
+                        <div 
+                            key={chat.id} 
+                            onClick={() => handleOpenChat(chat.booking_id)}
+                            className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer flex gap-4 items-center group"
+                        >
+                            <div className="relative">
+                                <div className="h-14 w-14 bg-gray-100 rounded-full overflow-hidden border border-gray-100 flex-shrink-0">
+                                    <img src={`https://ui-avatars.com/api/?name=${chat.other_user_name}&background=random`} className="h-full w-full object-cover"/>
+                                </div>
+                                {chat.unread_count > 0 && <div className="absolute top-0 right-0 h-3 w-3 bg-red-500 rounded-full border-2 border-white"></div>}
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                                <div className="flex justify-between">
+                                    <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{chat.other_user_name}</h3>
+                                    <span className="text-xs text-gray-400">{chat.last_message_time}</span>
+                                </div>
+                                <div className="text-[10px] uppercase font-bold text-gray-400 mb-1 tracking-wider">Job #{chat.booking_id} • {chat.service_type}</div>
+                                <p className="text-sm text-gray-600 truncate">{chat.last_message_content}</p>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+    // ------------------------------------
 
     return (
         <>
@@ -36,19 +139,48 @@ const DesktopDashboard = ({
             <div className="min-h-screen bg-gray-50 pb-12">
                 
                 {/* --- HEADER --- */}
-                <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-4 mb-8 sticky top-0 z-50 shadow-sm">
+                <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-3 sticky top-0 z-50 shadow-sm">
                     <div className="max-w-7xl mx-auto flex justify-between items-center">
-                        <div className="flex items-center gap-4 cursor-pointer" onClick={() => onSelectCategory(null)}>
-                            <h2 className="font-black text-2xl text-[#1b6ed1] tracking-tighter">FixMe.</h2>
+                        <div className="flex items-center gap-8">
+                            {/* Logo */}
+                            <div className="flex items-center gap-2 cursor-pointer" onClick={() => {onSelectCategory(null); setActiveTab('browse');}}>
+                                <h2 className="font-black text-2xl text-[#1b6ed1] tracking-tighter">FixMe.</h2>
+                            </div>
+
+                            {/* 👇 NEW NAVIGATION TABS */}
+                            <nav className="hidden md:flex gap-1 bg-gray-100 p-1 rounded-lg">
+                                <button 
+                                    onClick={() => {onSelectCategory(null); setActiveTab('browse');}}
+                                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all ${
+                                        activeTab === 'browse' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                                    }`}
+                                >
+                                    Browse Services
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('chats')}
+                                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all flex items-center gap-2 ${
+                                        activeTab === 'chats' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                                    }`}
+                                >
+                                    Messages
+                                    {unreadCount > 0 && (
+                                        <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{unreadCount}</span>
+                                    )}
+                                </button>
+                            </nav>
                         </div>
 
                         {/* USER DROPDOWN */}
                         <div className="relative">
                             <button 
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-full transition-colors"
+                                className="flex items-center gap-2 hover:bg-gray-100 px-3 py-2 rounded-full transition-colors"
                             >
-                                <span className="font-bold text-sm text-gray-700">{user.name}</span>
+                                <div className="w-8 h-8 bg-[#1b6ed1] rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                    {user.name.charAt(0)}
+                                </div>
+                                <span className="font-bold text-sm text-gray-700 hidden md:block">{user.name}</span>
                                 <svg className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
@@ -89,181 +221,116 @@ const DesktopDashboard = ({
                     </div>
                 </div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 mt-8">
                     
-                    {/* --- 1. WELCOME BANNER --- */}
-                    {!selectedCategory && (
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border-l-8 border-[#1b6ed1] flex justify-between items-center animate-fade-in-up">
-                            <div>
-                                <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-                                    Hello, {user?.name || 'FixMe User'}! 👋
-                                </h1>
-                                <p className="text-gray-500 text-lg">
-                                    Ready to get things fixed? Select a service below.
-                                </p>
-                                <button 
-                                    onClick={onSwitchToWork}
-                                    className="mt-3 text-[#1b6ed1] font-bold text-sm hover:underline flex items-center gap-1"
-                                >
-                                    {user.isRepairer ? 'Go to your Repairer Dashboard →' : 'Want to earn money? Register as a Repairer →'}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
                     {/* --- 2. MAIN GRID LAYOUT --- */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         
                         {/* LEFT COLUMN (2/3 Width) */}
                         <div className="lg:col-span-2 space-y-8">
                             
-                            {/* CASE A: SHOW CATEGORIES (If nothing selected) */}
-                            {!selectedCategory && (
+                            {/* -------------------------
+                                VIEW A: BROWSE SERVICES (WITH TOP SERVICES)
+                               ------------------------- */}
+                            {activeTab === 'browse' && (
                                 <>
-                                    <div className="animate-fade-in-up">
-                                        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                            <span className="bg-blue-100 text-blue-600 p-1 rounded">📂</span> Categories
-                                        </h2>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {categories.map((cat, index) => (
-                                                <button 
-                                                    key={index} 
-                                                    onClick={() => onSelectCategory(cat)}
-                                                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
-                                                >
-                                                    <div className={`w-16 h-16 ${cat.color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                                                        {renderCategoryIcon(cat.icon)}
-                                                    </div>
-                                                    <span className="font-bold text-gray-700 group-hover:text-[#1b6ed1]">{cat.name}</span>
-                                                </button>
-                                            ))}
+                                    {/* WELCOME BANNER (Only if no category selected) */}
+                                    {!selectedCategory && (
+                                        <div className="bg-gradient-to-r from-[#1b6ed1] to-blue-600 p-8 rounded-2xl shadow-lg text-white flex justify-between items-center animate-fade-in-up mb-8">
+                                            <div>
+                                                <h1 className="text-3xl font-extrabold mb-2">Hello, {user?.name.split(' ')[0]}! 👋</h1>
+                                                <p className="text-blue-100 text-lg">What needs fixing today?</p>
+                                            </div>
+                                            <div className="text-5xl opacity-20">🛠️</div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    {/* TOP SERVICES */}
-                                    <div className="animate-fade-in-up delay-100">
-                                        <div className="flex justify-between items-end mb-4">
-                                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                                                <span className="bg-yellow-100 text-yellow-600 p-1 rounded">⭐</span> Top Services
+                                    {/* CATEGORIES GRID (Only if no category selected) */}
+                                    {!selectedCategory && (
+                                        <div className="animate-fade-in-up">
+                                            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                                <span className="bg-blue-100 text-blue-600 p-1 rounded">📂</span> Categories
                                             </h2>
-                                        </div>
-                                        
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {topServices && topServices.length > 0 ? (
-                                                topServices.map((service, index) => (
-                                                    <div 
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                                {categories.map((cat, index) => (
+                                                    <button 
                                                         key={index} 
-                                                        onClick={() => onRepairerSelect(service)} 
-                                                        className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group"
+                                                        onClick={() => onSelectCategory(cat)}
+                                                        className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
                                                     >
-                                                        <div className="flex p-4 gap-4">
-                                                            <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex-shrink-0">
-                                                                <img src={service.image} alt={service.role} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                                            </div>
-                                                            <div className="flex-1 flex flex-col justify-center">
-                                                                <div className="flex justify-between items-start">
-                                                                    <div>
-                                                                        <h3 className="font-bold text-gray-900 text-lg">{service.role}</h3>
-                                                                        <p className="text-sm text-gray-500">{service.name}</p>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
-                                                                        <span className="text-yellow-500 text-xs">★</span>
-                                                                        <span className="font-bold text-xs text-gray-700">{service.rating}</span>
-                                                                    </div>
+                                                        <div className={`w-16 h-16 ${cat.color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                                                            {renderCategoryIcon(cat.icon)}
+                                                        </div>
+                                                        <span className="font-bold text-gray-700 group-hover:text-[#1b6ed1]">{cat.name}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* TOP SERVICES (Only if no category selected) */}
+                                    {!selectedCategory && renderTopServices()}
+
+
+                                    {/* REPAIRER LIST (If Category Selected) */}
+                                    {selectedCategory && (
+                                        <div className="animate-fade-in-right">
+                                            <div className="flex items-center gap-4 mb-6">
+                                                <button onClick={() => onSelectCategory(null)} className="p-2 bg-white border border-gray-200 rounded-full shadow-sm text-gray-600 hover:text-black hover:bg-gray-50 transition-colors">
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
+                                                </button>
+                                                <div>
+                                                    <h2 className="text-2xl font-bold text-gray-900">{selectedCategory.name} Experts</h2>
+                                                    <p className="text-sm text-gray-500">Found {repairers.length} professionals</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                {repairers.length === 0 ? (
+                                                    <div className="col-span-2 text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
+                                                        <div className="text-6xl mb-4">🕵️</div>
+                                                        <h3 className="text-xl font-bold text-gray-900">No repairers found</h3>
+                                                        <button onClick={() => onSelectCategory(null)} className="mt-6 px-6 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition">View All Categories</button>
+                                                    </div>
+                                                ) : (
+                                                    repairers.map((repairer) => (
+                                                        <div key={repairer.id} onClick={() => onRepairerSelect(repairer)} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer flex flex-col gap-4 group">
+                                                            <div className="flex items-start gap-4">
+                                                                <div className="h-16 w-16 bg-gray-100 rounded-full overflow-hidden border border-gray-100 flex-shrink-0">
+                                                                    <img src={`https://ui-avatars.com/api/?name=${repairer.repairer_profile.business_name}&background=random`} alt={repairer.repairer_profile.business_name} className="h-full w-full object-cover" />
                                                                 </div>
-                                                                <button className="mt-3 text-left text-xs font-bold text-[#1b6ed1] uppercase tracking-wide group-hover:underline">
-                                                                    Book Now →
-                                                                </button>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex justify-between items-start">
+                                                                        <h3 className="font-bold text-lg text-gray-900 truncate">{repairer.repairer_profile.business_name}</h3>
+                                                                        <span className="flex items-center text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg border border-yellow-100">
+                                                                            ★ {repairer.repairer_profile.rating || 'New'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">📍 {repairer.location?.address || 'Davao City'}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2 mt-auto">
+                                                                {repairer.repairer_profile.skills?.slice(0, 3).map(skill => (
+                                                                    <span key={skill.id} className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full border border-gray-100 group-hover:border-blue-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">{skill.name}</span>
+                                                                ))}
+                                                                {repairer.repairer_profile.skills?.length > 3 && (
+                                                                    <span className="px-3 py-1 text-gray-400 text-xs font-medium">+ {repairer.repairer_profile.skills.length - 3} more</span>
+                                                                )}
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="col-span-2 bg-white p-8 rounded-xl border border-dashed border-gray-300 text-center text-gray-500">
-                                                    No top services available.
-                                                </div>
-                                            )}
+                                                    ))
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </>
                             )}
+                            
+                            {/* -------------------------
+                                VIEW B: MESSAGES (Rendered by helper)
+                               ------------------------- */}
+                            {activeTab === 'chats' && renderChatsView()}
 
-                            {/* CASE B: REPAIRER LIST (If Category Selected) */}
-                            {selectedCategory && (
-                                <div className="animate-fade-in-right">
-                                    <div className="flex items-center gap-4 mb-6">
-                                        <button 
-                                            onClick={() => onSelectCategory(null)} 
-                                            className="p-2 bg-white border border-gray-200 rounded-full shadow-sm text-gray-600 hover:text-black hover:bg-gray-50 transition-colors"
-                                        >
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
-                                        </button>
-                                        <div>
-                                            <h2 className="text-2xl font-bold text-gray-900">{selectedCategory.name} Experts</h2>
-                                            <p className="text-sm text-gray-500">Found {repairers.length} professionals</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {repairers.length === 0 ? (
-                                            <div className="col-span-2 text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
-                                                <div className="text-6xl mb-4">🕵️</div>
-                                                <h3 className="text-xl font-bold text-gray-900">No repairers found</h3>
-                                                <p className="text-gray-500 mt-2">Try checking another category or come back later.</p>
-                                                <button 
-                                                    onClick={() => onSelectCategory(null)}
-                                                    className="mt-6 px-6 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200 transition"
-                                                >
-                                                    View All Categories
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            repairers.map((repairer) => (
-                                                <div 
-                                                    key={repairer.id} 
-                                                    onClick={() => onRepairerSelect(repairer)}
-                                                    className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer flex flex-col gap-4 group"
-                                                >
-                                                    <div className="flex items-start gap-4">
-                                                        <div className="h-16 w-16 bg-gray-100 rounded-full overflow-hidden border border-gray-100 flex-shrink-0">
-                                                            <img 
-                                                                src={`https://ui-avatars.com/api/?name=${repairer.repairer_profile.business_name}&background=random`} 
-                                                                alt={repairer.repairer_profile.business_name}
-                                                                className="h-full w-full object-cover"
-                                                            />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex justify-between items-start">
-                                                                <h3 className="font-bold text-lg text-gray-900 truncate">{repairer.repairer_profile.business_name}</h3>
-                                                                <span className="flex items-center text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg border border-yellow-100">
-                                                                    ★ {repairer.repairer_profile.rating || 'New'}
-                                                                </span>
-                                                            </div>
-                                                            <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                                {repairer.location?.address || 'Davao City'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex flex-wrap gap-2 mt-auto">
-                                                        {repairer.repairer_profile.skills?.slice(0, 3).map(skill => (
-                                                            <span key={skill.id} className="px-3 py-1 bg-gray-50 text-gray-600 text-xs font-medium rounded-full border border-gray-100 group-hover:border-blue-100 group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                                                                {skill.name}
-                                                            </span>
-                                                        ))}
-                                                        {repairer.repairer_profile.skills?.length > 3 && (
-                                                            <span className="px-3 py-1 text-gray-400 text-xs font-medium">
-                                                                +{repairer.repairer_profile.skills.length - 3} more
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {/* RIGHT COLUMN (1/3 Width) - APPOINTMENT CARD */}
@@ -271,8 +338,8 @@ const DesktopDashboard = ({
                             
                             {/* NEXT APPOINTMENT */}
                             <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden sticky top-24"> 
-                                <div className="bg-[#1b6ed1] p-4 text-white text-center">
-                                    <h3 className="font-bold text-lg tracking-wide uppercase">Next Appointment</h3>
+                                <div className="bg-gray-900 p-4 text-white text-center">
+                                    <h3 className="font-bold text-lg tracking-wide uppercase">Next Job</h3>
                                 </div>
                                 
                                 <div className="p-6">
@@ -297,13 +364,10 @@ const DesktopDashboard = ({
                                         </div>
                                     ) : (
                                         <div className="text-center py-8">
-                                            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                                                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                            </div>
                                             <p className="text-gray-900 font-bold mb-1">No Upcoming Fixes</p>
                                             <p className="text-gray-500 text-sm mb-6">Your schedule is currently empty.</p>
                                             <button 
-                                                onClick={() => onSelectCategory(null)} // Just scrolls up essentially
+                                                onClick={() => { onSelectCategory(null); setActiveTab('browse'); }} // Reset view and switch to browse
                                                 className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition"
                                             >
                                                 Find a Service
