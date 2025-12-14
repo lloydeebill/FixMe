@@ -15,10 +15,12 @@ class RepairerAvailabilityController extends Controller
     public function edit()
     {
         $user = Auth::user();
-        // Assuming user has a relationship 'repairerProfile'
-        $repairerId = $user->repairerProfile->repairer_id;
+
+        // 🛑 FIX: Use standard 'id'
+        $repairerId = $user->repairerProfile->id;
 
         // Fetch existing schedule from DB
+        // Note: The database column is 'repairer_profile_id', which is correct.
         $availabilities = RepairerAvailability::where('repairer_profile_id', $repairerId)
             ->orderBy('day_of_week')
             ->get();
@@ -51,11 +53,14 @@ class RepairerAvailabilityController extends Controller
         ]);
 
         $user = Auth::user();
-        $repairerId = $user->repairerProfile->repairer_id;
+
+        // 🛑 FIX: Use standard 'id'
+        $repairerId = $user->repairerProfile->id;
 
         foreach ($request->schedule as $dayData) {
             RepairerAvailability::updateOrCreate(
                 [
+                    // Match the correct foreign key column
                     'repairer_profile_id' => $repairerId,
                     'day_of_week' => $dayData['day_of_week']
                 ],
@@ -76,7 +81,8 @@ class RepairerAvailabilityController extends Controller
 
         $user = Auth::user();
 
-        $repairerId = $user->repairerProfile->repairer_id;
+        // 🛑 FIX: Use standard 'id'
+        $repairerId = $user->repairerProfile->id;
 
         $date = Carbon::parse($request->date);
         $dayOfWeek = $date->dayOfWeek; // 0 (Sunday) to 6 (Saturday)
@@ -92,7 +98,6 @@ class RepairerAvailabilityController extends Controller
         }
 
         // 2. Fetch Google Events
-        // Note: Ensure 'google_access_token' is where you stored the token in your User table
         $googleEvents = $this->fetchGoogleEvents($user, $date);
 
         // 3. Generate Slots & Subtract Conflicts
@@ -117,8 +122,6 @@ class RepairerAvailabilityController extends Controller
     private function fetchGoogleEvents($user, $date)
     {
         $client = new GoogleClient();
-        // IMPORTANT: Ensure you are retrieving the token correctly here. 
-        // If you stored it in a separate table, adjust "$user->google_access_token"
         $client->setAccessToken($user->google_calendar_token);
 
         $service = new GoogleCalendar($client);
@@ -135,7 +138,6 @@ class RepairerAvailabilityController extends Controller
             $results = $service->events->listEvents($calendarId, $optParams);
             return $results->getItems();
         } catch (\Exception $e) {
-            // If Google fails (e.g. token expired), return empty to avoid crashing
             return [];
         }
     }

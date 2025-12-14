@@ -3,38 +3,40 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Booking extends Model
 {
+  use HasFactory;
+
   protected $fillable = [
     'customer_id',
-    'repairer_id',
+    'repairer_profile_id', // 👈 UPDATED: Matches the new migration & controller
     'service_type',
     'scheduled_at',
-    // 🚨 ADD THIS: Needed for Google Calendar duration
     'end_time',
     'status',
     'problem_description',
     'location_snapshot',
-    // 🚨 ADD THIS: Needed to store the Google ID after syncing
     'google_event_id',
   ];
 
   protected $casts = [
     'scheduled_at' => 'datetime',
-    // 🚨 ADD THIS: Makes it easy to format for Google API
     'end_time' => 'datetime',
   ];
 
-  // Connectivity back to User
+  // Connectivity back to User (Customer)
   public function customer()
   {
     return $this->belongsTo(User::class, 'customer_id', 'user_id');
   }
 
-  // Connectivity back to Repairer
-  public function repairer()
+  // Connectivity back to Repairer Profile
+  public function repairerProfile()
   {
-    return $this->belongsTo(RepairerProfile::class, 'repairer_id', 'repairer_id');
+    // 🛑 FIX: Point to 'repairer_profile_id' column on this table
+    // and link it to the RepairerProfile class (which uses standard 'id' now)
+    return $this->belongsTo(RepairerProfile::class, 'repairer_profile_id');
   }
 }
