@@ -9,17 +9,30 @@ class Conversation extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['booking_id', 'sender_id', 'receiver_id'];
+    protected $guarded = [];
 
-    // Relationship: A conversation has many messages
+    // 1. Link to the Booking
+    public function booking()
+    {
+        return $this->belongsTo(Booking::class, 'booking_id');
+    }
+
+    // 2. Link to the Messages (One conversation has many messages)
     public function messages()
     {
         return $this->hasMany(Message::class);
     }
 
-    // Relationship: A conversation belongs to a Booking
-    public function booking()
+    // 3. Link to the Sender (User)
+    // We specify 'user_id' because you renamed your primary key
+    public function sender()
     {
-        return $this->belongsTo(Booking::class);
+        return $this->belongsTo(User::class, 'sender_id', 'user_id');
+    }
+
+    // 4. Link to the Receiver (User)
+    public function receiver()
+    {
+        return $this->belongsTo(User::class, 'receiver_id', 'user_id');
     }
 }

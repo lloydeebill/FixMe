@@ -32,7 +32,8 @@ export default function Dashboard({
     jobs = [], 
     schedule = [],
     repairers = [], 
-    isGoogleConnected = false
+    isGoogleConnected = false,
+    conversations = []
 }) {
     
     const user = { ...auth.user, location: userLocation };    
@@ -135,7 +136,7 @@ export default function Dashboard({
         history,
         topServices, // You might not need this anymore on mobile
         
-        // 👇 PASS THE NEW STUFF DOWN
+        conversations, 
         categories: SERVICE_CATEGORIES,
         selectedCategory,
         onSelectCategory: setSelectedCategory,
@@ -158,6 +159,7 @@ export default function Dashboard({
                 jobs={jobs}
                 schedule={schedule}
                 isGoogleConnected={isGoogleConnected}
+                conversations={conversations}
                 onSwitchToCustomer={() => setIsWorkMode(false)} 
             />
         );

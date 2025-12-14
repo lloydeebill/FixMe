@@ -12,6 +12,8 @@ use Google\Service\Calendar as GoogleCalendar;
 use Google\Service\Calendar\Event;
 use Inertia\Inertia;
 use App\Models\RepairerAvailability;
+use App\Models\Conversation;
+use App\Models\Message;
 
 class BookingController extends Controller
 {
@@ -79,18 +81,16 @@ class BookingController extends Controller
     }
 
     // 2. APPROVE (Repairer Accepts & Syncs)
+    // 2. APPROVE (Repairer Accepts & Syncs)
     public function approve(Request $request, $id)
     {
         $booking = Booking::findOrFail($id);
-
-        // 🛑 FIX: Find by ID (Not repairer_id)
         $repairerProfile = RepairerProfile::find($booking->repairer_profile_id);
 
         if (!$repairerProfile) {
             abort(404, 'Profile not found');
         }
 
-        // Security Check
         if ($repairerProfile->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
             abort(403, 'Unauthorized');
         }
@@ -98,21 +98,36 @@ class BookingController extends Controller
         // 1. Update Status
         $booking->update(['status' => 'confirmed']);
 
-        // 2. Sync to Google Calendar
-        $repairerUser = $repairerProfile->user;
+        // 👇 FIX: CREATE THE CONVERSATION FIRST!
+        $conversation = Conversation::firstOrCreate(
+            ['booking_id' => $booking->id],
+            [
+                'sender_id' => $booking->customer_id,
+                'receiver_id' => $repairerProfile->user_id
+            ]
+        );
 
-        // 🛑 FIX: Eager load location to prevent object/string crash
+        // 👇 NOW you can use $conversation->id
+        $formattedDate = \Carbon\Carbon::parse($booking->scheduled_at)->format('M d, h:i A');
+
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'sender_id'       => $repairerProfile->user_id, // Sent by Repairer
+            'content'         => "Hello! I have accepted your request for {$booking->service_type}. I will see you on {$formattedDate}."
+        ]);
+
+        // 2. Sync to Google Calendar (Your existing code)
+        $repairerUser = $repairerProfile->user;
         $customer = User::with('location')->find($booking->customer_id);
 
         if ($repairerUser && $repairerUser->google_calendar_token) {
             $eventId = $this->addToGoogleCalendar($booking, $repairerUser, $customer);
-
             if ($eventId) {
                 $booking->update(['google_event_id' => $eventId]);
             }
         }
 
-        return redirect()->back()->with('message', 'Job Accepted & Synced!');
+        return redirect()->back()->with('message', 'Job Accepted, Chat Started & Synced!');
     }
 
     // 3. REJECT

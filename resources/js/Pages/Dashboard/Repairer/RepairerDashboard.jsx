@@ -9,7 +9,9 @@ export default function RepairerDashboard({
     jobs: initialJobs, 
     schedule,
     isGoogleConnected,
-    onSwitchToCustomer 
+    onSwitchToCustomer,
+    
+    conversations = [] // 👈 1. Accept conversations here
 }) {
     const [jobs, setJobs] = useState(initialJobs);
 
@@ -17,8 +19,7 @@ export default function RepairerDashboard({
         setJobs(initialJobs);
     }, [initialJobs]);
 
-    // --- SHARED ACTIONS (Defined Once!) ---
-    
+    // ... (Keep your existing handlers: handleApprove, handleReject, etc.) ...
     const handleApprove = (id) => {
         if (confirm("Accept this job and sync to Google Calendar?")) {
             router.post(`/bookings/${id}/approve`, {}, {
@@ -44,7 +45,7 @@ export default function RepairerDashboard({
     const handleLogout = () => {
         router.post('/logout'); 
     };
-    // --- RENDER ---
+
     return (
         <>
             <Head title="Work Dashboard" />
@@ -57,6 +58,9 @@ export default function RepairerDashboard({
                     jobs={jobs}
                     schedule={schedule}
                     isGoogleConnected={isGoogleConnected}
+                    
+                    conversations={conversations} // 👈 2. Pass it down
+                    
                     onSwitchToCustomer={onSwitchToCustomer}
                     onApprove={handleApprove} 
                     onReject={handleReject}
@@ -73,12 +77,13 @@ export default function RepairerDashboard({
                     jobs={jobs} 
                     schedule={schedule}
                     isGoogleConnected={isGoogleConnected}
+                    
+                    conversations={conversations} // 👈 3. Pass it here too (optional)
+                    
                     onSwitchToCustomer={onSwitchToCustomer}
-                    // 👇 PASSING THE SHARED ACTIONS DOWN
                     onApprove={handleApprove}
                     onReject={handleReject}
                     onLogout={handleLogout} 
-
                 />
             </div>
         </>

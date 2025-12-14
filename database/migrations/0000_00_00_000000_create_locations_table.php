@@ -16,8 +16,6 @@ return new class extends Migration
             $table->decimal('longitude', 11, 8)->nullable();
             $table->timestamps();
         });
-
-        // 🛑 DO NOT PUT 'Schema::table('users'...)' HERE!
     }
 
     public function down(): void

@@ -1,127 +1,132 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useForm } from '@inertiajs/react';
+import { useForm, Link } from '@inertiajs/react'; // 👈 Import Link
 
 export default function TestChat({ booking, currentUser, initialMessages }) {
-    // 1. Initialize state with the messages passed from Laravel
     const [messages, setMessages] = useState(initialMessages);
     const messagesEndRef = useRef(null);
 
     useEffect(() => {
-    setMessages(initialMessages);
+        setMessages(initialMessages);
     }, [initialMessages]);
-    // 2. Setup the Inertia Form
+
     const { data, setData, post, reset, processing } = useForm({
         message: '',
     });
 
-    // 3. Scroll to bottom whenever messages change
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    // Run scroll on load and when messages update
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
-    // 4. LISTEN FOR EVENTS (The Real-Time Part)
     useEffect(() => {
-        console.log(`Attempting to connect to channel: messages.${currentUser.id}`);
-
         const myUserId = currentUser.id || currentUser.user_id;
         window.Echo.private(`messages.${myUserId}`)
             .listen('.message.sent', (e) => {
-                console.log('Real-time message received:', e.message);
-                
-                // Only push to state if the message belongs to THIS conversation
-                // (This prevents messages from other bookings appearing here if you have multiple jobs)
-                // Since we don't have conversation ID in the event easily, we just push it for this test.
                 setMessages((prev) => [...prev, e.message]);
             });
 
-        // Cleanup: Disconnect when leaving the page
         return () => {
-            window.Echo.leave(`messages.${currentUser.id}`);
+            window.Echo.leave(`messages.${myUserId}`);
         };
-    }, [currentUser.id]);
+    }, [currentUser.id, currentUser.user_id]);
 
-    // 5. Send Message Handler
     const submit = (e) => {
         e.preventDefault();
-        
         if (!data.message.trim()) return;
 
-        // Use Inertia's post method to send data to backend
         post(`/api/messages/${booking.id}`, {
             onSuccess: () => {
                 reset('message');
-                // Note: We don't manually add the message here. 
-                // We wait for the Websocket to "echo" it back to us.
-                // This proves the real-time connection works!
             },
             preserveScroll: true,
         });
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 p-6 flex items-center justify-center">
-            <div className="w-full max-w-2xl bg-white shadow-lg rounded-lg overflow-hidden">
-                {/* Header */}
-                <div className="bg-blue-600 p-4 text-white flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Chat: Job #{booking.id}</h2>
-                    <span className="text-sm bg-blue-700 px-2 py-1 rounded">
-                        Logged in as: {currentUser.name}
-                    </span>
+        <div className="min-h-screen bg-gray-100 flex flex-col">
+            
+            {/* ==============================================
+                1. HEADER with BACK BUTTON
+               ============================================== */}
+            <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+                <div className="flex items-center gap-3">
+                    {/* 👇 THE BACK BUTTON */}
+                    <Link href="/app" className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    </Link>
+                    
+                    <div>
+                        <h2 className="text-sm font-bold text-gray-900 leading-tight">Job #{booking.id}</h2>
+                        <p className="text-xs text-gray-500">{booking.service_type}</p>
+                    </div>
                 </div>
                 
-                {/* Message Area */}
-                <div className="h-96 overflow-y-auto p-4 bg-gray-50 flex flex-col gap-3">
-                    {messages.length === 0 && (
-                        <p className="text-gray-400 text-center mt-10">No messages yet. Say hi!</p>
-                    )}
-                    
-                    {messages.map((msg, index) => {
-                    const isMe = msg.sender_id === (currentUser.id || currentUser.user_id);                        return (
-                            <div key={msg.id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-xs px-4 py-2 rounded-lg shadow-sm ${
-                                    isMe 
-                                        ? 'bg-blue-500 text-white rounded-br-none' 
-                                        : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
-                                }`}>
-                                    {/* Sender Name (Only show if not me) */}
-                                    {!isMe && msg.sender && (
-                                        <div className="text-xs font-bold text-gray-500 mb-1">
-                                            {msg.sender.name}
-                                        </div>
-                                    )}
-                                    <p>{msg.content}</p>
-                                </div>
-                            </div>
-                        );
-                    })}
-                    <div ref={messagesEndRef} />
+                {/* User Badge */}
+                <div className="text-xs font-medium bg-gray-100 px-2 py-1 rounded-full text-gray-600">
+                    {currentUser.name}
                 </div>
+            </div>
 
-                {/* Input Area */}
-                <div className="p-4 bg-white border-t border-gray-200">
-                    <form onSubmit={submit} className="flex gap-2">
-                        <input 
-                            type="text" 
-                            value={data.message}
-                            onChange={(e) => setData('message', e.target.value)}
-                            className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Type a message..."
-                            disabled={processing}
-                        />
-                        <button 
-                            type="submit" 
-                            disabled={processing || !data.message.trim()}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                        >
-                            Send
-                        </button>
-                    </form>
-                </div>
+            {/* ==============================================
+                2. MESSAGE AREA
+               ============================================== */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+                {messages.length === 0 && (
+                    <div className="text-center py-10">
+                        <p className="text-gray-400 text-sm">This is the start of your conversation.</p>
+                    </div>
+                )}
+                
+                {messages.map((msg, index) => {
+                    // Check ID match carefully
+                    const myId = currentUser.id || currentUser.user_id;
+                    const isMe = msg.sender_id == myId; 
+
+                    return (
+                        <div key={msg.id || index} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm text-sm ${
+                                isMe 
+                                    ? 'bg-blue-600 text-white rounded-br-none' 
+                                    : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
+                            }`}>
+                                {!isMe && msg.sender && (
+                                    <p className="text-[10px] font-bold text-gray-400 mb-1">{msg.sender.name}</p>
+                                )}
+                                <p className="leading-relaxed">{msg.content}</p>
+                                <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-gray-400'}`}>
+                                    {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                            </div>
+                        </div>
+                    );
+                })}
+                <div ref={messagesEndRef} />
+            </div>
+
+            {/* ==============================================
+                3. INPUT AREA
+               ============================================== */}
+            <div className="bg-white border-t border-gray-200 p-3 pb-safe">
+                <form onSubmit={submit} className="flex gap-2 items-center">
+                    <input 
+                        type="text" 
+                        value={data.message}
+                        onChange={(e) => setData('message', e.target.value)}
+                        className="flex-1 p-3 bg-gray-100 border-0 rounded-full focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-sm"
+                        placeholder="Type a message..."
+                        disabled={processing}
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={processing || !data.message.trim()}
+                        className="bg-blue-600 text-white p-3 rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-md transition-transform active:scale-95"
+                    >
+                        <svg className="w-5 h-5 translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                    </button>
+                </form>
             </div>
         </div>
     );
