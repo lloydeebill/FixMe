@@ -17,6 +17,34 @@ use App\Models\Message;
 
 class BookingController extends Controller
 {
+
+    // 0. LIST (Get My Bookings)
+    public function index(Request $request)
+    {
+        $user = Auth::user();
+        $query = Booking::query();
+
+        // Filter: Am I the Customer or the Repairer?
+        if ($user->role === 'client') {
+            $query->where('customer_id', $user->user_id);
+        } elseif ($user->role === 'repairer') {
+            // Ensure we get bookings for this repairer's profile
+            $profile = RepairerProfile::where('user_id', $user->user_id)->first();
+            if ($profile) {
+                $query->where('repairer_profile_id', $profile->id);
+            }
+        }
+
+        // Use the Scopes we added to Booking.php earlier
+        // 'with' loads the relationships so you can show names/photos
+        $active  = (clone $query)->active()->with(['repairerProfile', 'customer'])->get();
+        $history = (clone $query)->completed()->with(['repairerProfile', 'customer'])->get();
+
+        return response()->json([
+            'active_jobs' => $active,
+            'history'     => $history,
+        ]);
+    }
     // 1. STORE (Customer Creates Request)
     public function store(Request $request)
     {
@@ -146,6 +174,36 @@ class BookingController extends Controller
         $booking->update(['status' => 'rejected']);
 
         return redirect()->back()->with('message', 'Request declined.');
+    }
+
+    // 4. COMPLETE (Repairer Marks Job as Done)
+    public function complete(Request $request, $id)
+    {
+        $booking = Booking::findOrFail($id);
+
+        // Security Check: Only the assigned Repairer can mark it done
+        $repairerProfile = RepairerProfile::where('user_id', Auth::id())->first();
+
+        if (!$repairerProfile || $booking->repairer_profile_id !== $repairerProfile->id) {
+            abort(403, 'Only the repairer can complete this job.');
+        }
+
+        if ($booking->status !== 'confirmed') {
+            return back()->withErrors(['message' => 'Job must be in progress to complete it.']);
+        }
+
+        $booking->update(['status' => 'completed']);
+
+        // Optional: Send a "Job Done" message to the chat automatically
+        if ($booking->conversation) {
+            Message::create([
+                'conversation_id' => $booking->conversation->id,
+                'sender_id'       => Auth::id(),
+                'content'         => "I have marked this job as completed. Thank you!"
+            ]);
+        }
+
+        return redirect()->back()->with('message', 'Job marked as complete!');
     }
 
     // --- HELPER: SYNC TO GOOGLE ---

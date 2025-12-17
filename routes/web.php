@@ -95,6 +95,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::post('/bookings/{id}/approve', [BookingController::class, 'approve'])->name('bookings.approve');
     Route::post('/bookings/{id}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
+    Route::post('/bookings/{id}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
 
     // --- SETTINGS ---
     Route::get('/settings', function () {
