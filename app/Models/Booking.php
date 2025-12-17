@@ -55,4 +55,10 @@ class Booking extends Model
   {
     return $query->where('status', 'completed');
   }
+
+  public function review()
+  {
+    // A booking has one review
+    return $this->hasOne(Review::class);
+  }
 }

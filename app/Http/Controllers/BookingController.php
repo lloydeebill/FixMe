@@ -14,6 +14,7 @@ use Inertia\Inertia;
 use App\Models\RepairerAvailability;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\Review;
 
 class BookingController extends Controller
 {
@@ -24,21 +25,22 @@ class BookingController extends Controller
         $user = Auth::user();
         $query = Booking::query();
 
-        // Filter: Am I the Customer or the Repairer?
         if ($user->role === 'client') {
             $query->where('customer_id', $user->user_id);
         } elseif ($user->role === 'repairer') {
-            // Ensure we get bookings for this repairer's profile
             $profile = RepairerProfile::where('user_id', $user->user_id)->first();
             if ($profile) {
                 $query->where('repairer_profile_id', $profile->id);
             }
         }
 
-        // Use the Scopes we added to Booking.php earlier
-        // 'with' loads the relationships so you can show names/photos
         $active  = (clone $query)->active()->with(['repairerProfile', 'customer'])->get();
-        $history = (clone $query)->completed()->with(['repairerProfile', 'customer'])->get();
+
+        // 👇 THIS IS THE CRITICAL LINE 👇
+        // You must include 'review' here, otherwise the frontend thinks review is NULL for everyone.
+        $history = (clone $query)->completed()
+            ->with(['repairerProfile', 'customer', 'review'])
+            ->get();
 
         return response()->json([
             'active_jobs' => $active,
@@ -283,5 +285,61 @@ class BookingController extends Controller
             \Log::error('Google Calendar Sync Exception: ' . $e->getMessage());
             return null;
         }
+    }
+
+    public function storeReview(Request $request, $id)
+    {
+        // 1. Validate
+        $request->validate([
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string|max:500',
+        ]);
+
+        // 2. Find Booking
+        $booking = Booking::with('repairerProfile')->findOrFail($id);
+
+        if ($request->user()->user_id !== $booking->customer_id) {
+            abort(403, 'Unauthorized');
+        }
+
+        // 3. Prevent Duplicates
+        // If a review exists, we return error, BUT we still run the math just to fix your stuck database
+        $existingReview = \App\Models\Review::where('booking_id', $booking->id)->first();
+
+        if ($existingReview) {
+            // OPTIONAL: Run the math fix here too, just to un-stick your database
+            $this->recalculateRating($booking->repairerProfile->user_id);
+            return redirect()->back()->with('error', 'You have already reviewed this job (Rating calculation refreshed).');
+        }
+
+        // 4. Save the New Review
+        \App\Models\Review::create([
+            'booking_id' => $booking->id,
+            'customer_id' => $request->user()->user_id,
+            'repairer_id' => $booking->repairerProfile->user_id,
+            'rating' => $request->rating,
+            'comment' => $request->comment,
+        ]);
+
+        // 5. Run the Math
+        $newRating = $this->recalculateRating($booking->repairerProfile->user_id);
+
+        return redirect()->back()->with('success', "Review submitted! New Rating: {$newRating}");
+    }
+
+    /**
+     * Helper to force-update the rating in the database
+     */
+    private function recalculateRating($repairerUserId)
+    {
+        // Calculate Average
+        $newAverage = \App\Models\Review::where('repairer_id', $repairerUserId)->avg('rating');
+        $finalRating = round($newAverage, 1);
+
+        // NUCLEAR UPDATE: Direct SQL command
+        \App\Models\RepairerProfile::where('user_id', $repairerUserId)
+            ->update(['rating' => $finalRating]);
+
+        return $finalRating;
     }
 }

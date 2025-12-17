@@ -137,5 +137,7 @@ Route::middleware(['auth'])->group(function () {
     // Note: We define these in web.php so they share the user session automatically
     Route::post('/api/messages/{bookingId}', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::get('/api/messages/{bookingId}', [ChatController::class, 'fetchMessages'])->name('chat.fetch');
+
+    Route::post('/bookings/{id}/review', [BookingController::class, 'storeReview'])->name('bookings.review');
   });
 });

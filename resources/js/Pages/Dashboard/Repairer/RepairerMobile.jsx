@@ -21,9 +21,6 @@ export default function RepairerMobile({
     const [jobsSubView, setJobsSubView] = useState('menu'); // 'menu' or 'list'
     const [selectedStatus, setSelectedStatus] = useState('pending'); // which list to show
 
-    // ⚡ CHAT STATE
-    // (Note: We use router.visit for chat now, but keeping this simple state structure is fine)
-    
     // Work Mode Logic
     const isOnSchedule = schedule && schedule.some(day => day.is_active);
 
@@ -108,53 +105,34 @@ export default function RepairerMobile({
 
     // 1. THE NEW JOBS MENU (DASHBOARD STYLE)
     const JobsMenu = () => {
-        // Calculate counts
         const pendingCount = jobs.filter(j => j.status === 'pending').length;
-        const activeCount = jobs.filter(j => j.status === 'confirmed').length; // 'confirmed' means Accepted/Active
+        const activeCount = jobs.filter(j => j.status === 'confirmed').length; 
         const completedCount = jobs.filter(j => j.status === 'completed').length;
 
         return (
             <div className="px-6 pb-24 pt-2 space-y-4 animate-fade-in-up">
-                {/* PENDING CARD */}
-                <button 
-                    onClick={() => handleOpenJobList('pending')}
-                    className="w-full bg-yellow-50 border border-yellow-100 p-6 rounded-2xl flex items-center justify-between shadow-sm active:scale-95 transition-transform"
-                >
+                <button onClick={() => handleOpenJobList('pending')} className="w-full bg-yellow-50 border border-yellow-100 p-6 rounded-2xl flex items-center justify-between shadow-sm active:scale-95 transition-transform">
                     <div className="text-left">
                         <h3 className="text-xl font-black text-yellow-900">Pending Requests</h3>
                         <p className="text-sm text-yellow-700 font-medium">Needs your approval</p>
                     </div>
-                    <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center text-xl font-black text-yellow-600 shadow-sm">
-                        {pendingCount}
-                    </div>
+                    <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center text-xl font-black text-yellow-600 shadow-sm">{pendingCount}</div>
                 </button>
 
-                {/* ACTIVE CARD */}
-                <button 
-                    onClick={() => handleOpenJobList('confirmed')}
-                    className="w-full bg-green-50 border border-green-100 p-6 rounded-2xl flex items-center justify-between shadow-sm active:scale-95 transition-transform"
-                >
+                <button onClick={() => handleOpenJobList('confirmed')} className="w-full bg-green-50 border border-green-100 p-6 rounded-2xl flex items-center justify-between shadow-sm active:scale-95 transition-transform">
                     <div className="text-left">
                         <h3 className="text-xl font-black text-green-900">Active Jobs</h3>
                         <p className="text-sm text-green-700 font-medium">Accepted & Scheduled</p>
                     </div>
-                    <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center text-xl font-black text-green-600 shadow-sm">
-                        {activeCount}
-                    </div>
+                    <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center text-xl font-black text-green-600 shadow-sm">{activeCount}</div>
                 </button>
 
-                {/* HISTORY CARD */}
-                <button 
-                    onClick={() => handleOpenJobList('completed')}
-                    className="w-full bg-gray-50 border border-gray-100 p-6 rounded-2xl flex items-center justify-between shadow-sm active:scale-95 transition-transform"
-                >
+                <button onClick={() => handleOpenJobList('completed')} className="w-full bg-gray-50 border border-gray-100 p-6 rounded-2xl flex items-center justify-between shadow-sm active:scale-95 transition-transform">
                     <div className="text-left">
                         <h3 className="text-xl font-black text-gray-900">Job History</h3>
                         <p className="text-sm text-gray-500 font-medium">Past completed work</p>
                     </div>
-                    <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center text-xl font-black text-gray-400 shadow-sm">
-                        {completedCount}
-                    </div>
+                    <div className="h-12 w-12 bg-white rounded-full flex items-center justify-center text-xl font-black text-gray-400 shadow-sm">{completedCount}</div>
                 </button>
             </div>
         );
@@ -163,8 +141,6 @@ export default function RepairerMobile({
     // 2. THE JOB LIST (Filtered)
     const JobsList = () => {
         const filteredJobs = jobs.filter(j => j.status === selectedStatus);
-        
-        // Dynamic Titles/Colors based on status
         let title = 'Pending Requests';
         let headerColor = 'text-yellow-900';
         if (selectedStatus === 'confirmed') { title = 'Active Jobs'; headerColor = 'text-green-900'; }
@@ -172,18 +148,10 @@ export default function RepairerMobile({
 
         return (
             <div className="px-4 pb-24 pt-2 animate-fade-in-right">
-                {/* Back Button Header */}
                 <div className="flex items-center gap-4 mb-6">
-                    <button 
-                        onClick={() => setJobsSubView('menu')}
-                        className="p-2 bg-white border border-gray-200 rounded-full shadow-sm active:bg-gray-100"
-                    >
-                        ←
-                    </button>
+                    <button onClick={() => setJobsSubView('menu')} className="p-2 bg-white border border-gray-200 rounded-full shadow-sm active:bg-gray-100">←</button>
                     <h2 className={`text-xl font-black ${headerColor}`}>{title}</h2>
                 </div>
-
-                {/* List Content */}
                 {filteredJobs.length === 0 ? (
                     <div className="text-center py-20 opacity-50">
                         <p className="text-4xl mb-2">📂</p>
@@ -196,25 +164,41 @@ export default function RepairerMobile({
         );
     };
 
+    // ⚡ 3. UPGRADED CHATS VIEW (Looks just like Customer App now)
     const ChatsView = () => (
-        <div className="px-4 pb-24">
+        <div className="px-4 pb-24 pt-2 animate-fade-in-up">
              {conversations.length === 0 ? (
-                <div className="text-center py-20 text-gray-400"><p>No active chats.</p></div>
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="bg-gray-50 p-6 rounded-full mb-4"><span className="text-4xl">💬</span></div>
+                    <h3 className="font-bold text-gray-900">No active chats</h3>
+                    <p className="text-sm text-gray-500 max-w-[200px]">Messages from customers will appear here.</p>
+                </div>
             ) : (
                 conversations.map(chat => (
-                    <div key={chat.id} onClick={() => handleOpenChat(chat.booking_id)} className="bg-white p-4 rounded-xl mb-3 border border-gray-100 flex items-center gap-4 active:bg-gray-50 cursor-pointer">
-                        <div className="relative">
-                            <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden">
-                                <img src={`https://ui-avatars.com/api/?name=${chat.other_user_name}&background=random`} className="w-full h-full object-cover" />
-                            </div>
-                            {chat.unread_count > 0 && <div className="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></div>}
+                    <div key={chat.id} onClick={() => handleOpenChat(chat.booking_id)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 active:scale-95 transition-transform mb-3 relative">
+                        {/* UNREAD DOT */}
+                        {chat.unread_count > 0 && <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></div>}
+                        
+                        {/* AVATAR */}
+                        <div className="h-14 w-14 bg-gray-100 rounded-full overflow-hidden border border-gray-100 flex-shrink-0">
+                            <img src={`https://ui-avatars.com/api/?name=${chat.other_user_name}&background=random`} className="h-full w-full object-cover" />
                         </div>
-                        <div className="flex-1">
-                            <div className="flex justify-between">
-                                <h3 className="font-bold text-gray-900">{chat.other_user_name}</h3>
-                                <span className="text-[10px] text-gray-400">{chat.last_message_time || 'Now'}</span>
+
+                        {/* TEXT CONTENT - min-w-0 fixes the flex wrap issue! */}
+                        <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-baseline mb-1">
+                                <h3 className="font-bold text-gray-900 truncate">{chat.other_user_name}</h3>
+                                <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{chat.last_message_time || 'Just now'}</span>
                             </div>
-                            <p className="text-sm text-gray-500 truncate">{chat.last_message_content || 'Start chatting...'}</p>
+                            
+                            {/* JOB BADGE (Context) */}
+                            <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold mb-1.5 border border-blue-100 max-w-full truncate">
+                                Job #{chat.booking_id} • {chat.service_type || 'Service'}
+                            </div>
+
+                            <p className="text-sm text-gray-500 truncate block">
+                                {chat.last_message_content || 'Start chatting...'}
+                            </p>
                         </div>
                     </div>
                 ))
@@ -268,7 +252,6 @@ export default function RepairerMobile({
 
             {/* CONTENT AREA */}
             <main className="pt-6">
-                {/* Only show the Title if we are NOT in the sub-list view (to keep it clean) */}
                 {!(activeTab === 'jobs' && jobsSubView === 'list') && (
                     <div className="px-6 mb-4">
                         <h2 className="text-xl font-bold text-gray-900">
@@ -280,7 +263,6 @@ export default function RepairerMobile({
                     </div>
                 )}
 
-                {/* JOBS TAB LOGIC */}
                 {activeTab === 'jobs' && (
                     jobsSubView === 'menu' ? <JobsMenu /> : <JobsList />
                 )}
@@ -290,7 +272,6 @@ export default function RepairerMobile({
                 
                 {activeTab === 'profile' && (
                     <div className="px-6 space-y-4 pb-24">
-                        {/* Profile Content (Same as before) */}
                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-xs font-bold text-gray-400 uppercase">Repairer Status</span>
