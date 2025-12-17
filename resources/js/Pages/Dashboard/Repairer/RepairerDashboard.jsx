@@ -10,8 +10,7 @@ export default function RepairerDashboard({
     schedule,
     isGoogleConnected,
     onSwitchToCustomer,
-    
-    conversations = [] // 👈 1. Accept conversations here
+    conversations = [] 
 }) {
     const [jobs, setJobs] = useState(initialJobs);
 
@@ -19,7 +18,7 @@ export default function RepairerDashboard({
         setJobs(initialJobs);
     }, [initialJobs]);
 
-    // ... (Keep your existing handlers: handleApprove, handleReject, etc.) ...
+    // 1. APPROVE HANDLER
     const handleApprove = (id) => {
         if (confirm("Accept this job and sync to Google Calendar?")) {
             router.post(`/bookings/${id}/approve`, {}, {
@@ -29,11 +28,23 @@ export default function RepairerDashboard({
         }
     };
 
+    // 2. REJECT HANDLER
     const handleReject = (id) => {
         if (confirm('Are you sure you want to decline this request?')) {
             router.post(`/bookings/${id}/reject`, {}, {
                 onSuccess: () => alert("Request declined."),
                 onError: () => alert("Something went wrong.")
+            });
+        }
+    };
+
+    // 3. 🆕 COMPLETE HANDLER (Add this!)
+    const handleComplete = (id) => {
+        if (confirm("Are you sure you want to mark this job as completed?")) {
+            // Note: This hits the 'complete' method we added to BookingController
+            router.post(`/bookings/${id}/complete`, {}, {
+                onSuccess: () => alert("Great work! Job moved to history."),
+                onError: () => alert("Could not complete job.")
             });
         }
     };
@@ -58,12 +69,12 @@ export default function RepairerDashboard({
                     jobs={jobs}
                     schedule={schedule}
                     isGoogleConnected={isGoogleConnected}
-                    
-                    conversations={conversations} // 👈 2. Pass it down
+                    conversations={conversations}
                     
                     onSwitchToCustomer={onSwitchToCustomer}
                     onApprove={handleApprove} 
                     onReject={handleReject}
+                    onComplete={handleComplete} // 👈 PASS IT DOWN HERE
                     onRefresh={refreshJobs}
                     onLogout={handleLogout} 
                 />
@@ -75,15 +86,15 @@ export default function RepairerDashboard({
                     user={user} 
                     profile={profile} 
                     jobs={jobs} 
-                    schedule={schedule}
+                    schedule={schedule} 
                     isGoogleConnected={isGoogleConnected}
-                    
-                    conversations={conversations} // 👈 3. Pass it here too (optional)
+                    conversations={conversations}
                     
                     onSwitchToCustomer={onSwitchToCustomer}
                     onApprove={handleApprove}
                     onReject={handleReject}
                     onLogout={handleLogout} 
+                    onComplete={handleComplete}
                 />
             </div>
         </>

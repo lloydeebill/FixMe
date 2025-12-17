@@ -27,13 +27,14 @@ export default function Dashboard({
     appointment, 
     userLocation,
     quickAccess, 
-    history, 
+    history = [], // Ensure default empty array
     topServices,
     jobs = [], 
     schedule = [],
     repairers = [], 
     isGoogleConnected = false,
-    conversations = []
+    conversations = [],
+    repairerReviews = [],
 }) {
     
     const user = { ...auth.user, location: userLocation };    
@@ -41,20 +42,21 @@ export default function Dashboard({
 
     const [isWorkMode, setIsWorkMode] = useState(isRepairer);
     const [selectedRepairer, setSelectedRepairer] = useState(null);
-    
-    // 🆕 NEW: State to track selected category
     const [selectedCategory, setSelectedCategory] = useState(null);
 
+    // ✅ FIXED: Calculated HERE (Before it is used)
+    const pendingReviewsCount = useMemo(() => {
+        if (!history) return 0;
+        return history.filter(job => job.status === 'completed' && !job.review).length;
+    }, [history]);
+
     // --- LOGIC: FILTER REPAIRERS ---
-    // 1. Remove self from list
-    // 2. Filter by Category (if selected)
     const filteredRepairers = useMemo(() => {
         let list = repairers.filter(r => r.user_id !== user.user_id);
 
         if (selectedCategory) {
             list = list.filter(repairer => {
                 const skills = repairer.repairer_profile?.skills || [];
-                // Check if any of the repairer's skills match the selected category slug
                 return skills.some(skill => skill.slug === selectedCategory.slug);
             });
         }
@@ -71,20 +73,14 @@ export default function Dashboard({
     };
 
     const handleRepairerSelect = (repairerOrService) => {
-        // 🛑 FIX: Normalize data structure
-        // If we clicked a "Top Service", the location is directly on the object, 
-        // but BookingModal expects it inside 'location' or 'repairer_profile.location'.
-        
         let normalizedRepairer = repairerOrService;
 
-        // Check if it's a "Top Service" object (which has a flat 'location' property)
         if (repairerOrService.repairer_profile && !repairerOrService.repairer_profile.location) {
-             // Inject the location into the profile so BookingModal finds it
              normalizedRepairer = {
                  ...repairerOrService,
                  repairer_profile: {
                      ...repairerOrService.repairer_profile,
-                     location: repairerOrService.location // Use the location we loaded in Controller
+                     location: repairerOrService.location 
                  }
              };
         }
@@ -102,7 +98,6 @@ export default function Dashboard({
         const profileData = selectedRepairer.repairer_profile; 
         const realProfileId = profileData?.id;
         
-        // Use the selected category name if available, otherwise fallback to first skill
         const serviceType = selectedCategory 
             ? selectedCategory.name 
             : (profileData?.skills?.[0]?.name || 'General Repair');
@@ -129,19 +124,21 @@ export default function Dashboard({
     };
 
     // --- SHARED DATA BUNDLE ---
+    // Now this works because pendingReviewsCount is defined above ⬆️
     const sharedProps = {
         user,
         appointment,
         quickAccess,
         history,
-        topServices, // You might not need this anymore on mobile
+        topServices,
         
         conversations, 
         categories: SERVICE_CATEGORIES,
         selectedCategory,
         onSelectCategory: setSelectedCategory,
         
-        // Pass the FILTERED list, not the raw list
+        pendingReviewsCount, // ✅ Passed safely
+        
         repairers: filteredRepairers,
         
         onRepairerSelect: handleRepairerSelect, 
@@ -150,7 +147,6 @@ export default function Dashboard({
 
     // --- RENDER ---
 
-    // A. Repairer View
     if (isWorkMode) {
         return (
             <RepairerDashboard 
@@ -160,27 +156,24 @@ export default function Dashboard({
                 schedule={schedule}
                 isGoogleConnected={isGoogleConnected}
                 conversations={conversations}
+                reviews={repairerReviews}
                 onSwitchToCustomer={() => setIsWorkMode(false)} 
             />
         );
     }
 
-    // B. Customer View
     return (
         <>
             <Head title="Dashboard" />
 
-            {/* Mobile View */}
             <div className="block md:hidden">
                 <MobileDashboard {...sharedProps} />
             </div>
 
-            {/* Desktop View */}
             <div className="hidden md:block">
                 <DesktopDashboard {...sharedProps} />
             </div>
             
-            {/* Modal Layer */}
             <BookingModal 
                 repairer={selectedRepairer} 
                 user={user}
