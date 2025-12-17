@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\BookingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OnboardingController; // ⬅️ Add this import!
 use App\Http\Controllers\ChatController;
+
 
 // This test route is safe to keep!
 Route::get('/test', function () {
@@ -39,4 +41,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Send a message for a job
     Route::post('/bookings/{id}/messages', [ChatController::class, 'sendMessage']);
+
+    Route::get('/bookings', [BookingController::class, 'index']); // For the list
+    Route::post('/bookings/{id}/complete', [BookingController::class, 'complete']); // For the button
+
+
+    Route::post('/bookings/{id}/complete', [BookingController::class, 'complete']); // For the button
 });

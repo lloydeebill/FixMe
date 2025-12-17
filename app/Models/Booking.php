@@ -11,7 +11,7 @@ class Booking extends Model
 
   protected $fillable = [
     'customer_id',
-    'repairer_profile_id', // 👈 UPDATED: Matches the new migration & controller
+    'repairer_profile_id',
     'service_type',
     'scheduled_at',
     'end_time',
@@ -43,5 +43,22 @@ class Booking extends Model
   public function conversation()
   {
     return $this->hasOne(Conversation::class);
+  }
+
+  public function scopeActive($query)
+  {
+    return $query->whereIn('status', ['pending', 'confirmed', 'in_progress']);
+  }
+
+  // Scope for Completed Jobs
+  public function scopeCompleted($query)
+  {
+    return $query->where('status', 'completed');
+  }
+
+  public function review()
+  {
+    // A booking has one review
+    return $this->hasOne(Review::class);
   }
 }

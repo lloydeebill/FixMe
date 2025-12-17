@@ -15,7 +15,6 @@ class DashboardController extends Controller
     public function index()
     {
         // 1. Force a fresh User load with relationships
-        // This is safer than Auth::user()->load()
         $user = User::with(['location', 'repairerProfile'])
             ->find(Auth::id());
 
@@ -46,6 +45,11 @@ class DashboardController extends Controller
                 ->where('repairer_profile_id', $user->repairerProfile->id)
                 ->latest()
                 ->get();
+
+            $repairerReviews = \App\Models\Review::where('repairer_id', $user->user_id)
+                ->with('customer') // Get customer name/avatar
+                ->latest()
+                ->get();
         }
 
         // --- PREPARE CUSTOMER DATA ---
@@ -56,6 +60,7 @@ class DashboardController extends Controller
             ->orderBy('scheduled_at', 'asc')
             ->first();
 
+        // LOGIC: You calculate appointment here correctly
         $appointment = null;
         if ($nextBooking) {
             $date = \Carbon\Carbon::parse($nextBooking->scheduled_at);
@@ -83,7 +88,6 @@ class DashboardController extends Controller
                 return [
                     'id' => $profile->user->user_id,
                     'name' => $profile->user->name ?? 'Unknown',
-                    // Pass the User Location if Profile Location is missing
                     'location' => $profile->location ?? $profile->user->location,
                     'role' => $mainSkill,
                     'rating' => $profile->rating,
@@ -98,44 +102,51 @@ class DashboardController extends Controller
             ['name' => 'Plumbing', 'iconType' => 'plumbing'],
             ['name' => 'Electrical', 'iconType' => 'electrical'],
         ];
-        $history = ['lastJob' => 'Welcome!', 'count' => 0];
+
+        // 1. FETCH HISTORY (Completed Jobs)
+        $history = Booking::where('customer_id', $user->user_id)
+            ->where('status', 'completed')
+            ->with(['repairerProfile', 'review'])
+
+            // 👇 ADD THIS: Count the reviews (0 or 1)
+            ->withCount('review')
+
+            // 👇 PRIMARY SORT: Put '0' (Unreviewed) before '1' (Reviewed)
+            ->orderBy('review_count', 'asc')
+
+            // 👇 SECONDARY SORT: Within those groups, show newest first
+            ->orderBy('scheduled_at', 'desc')
+
+            ->get();
+
+        // 2. FETCH ACTIVE APPOINTMENT (Redundant query removed, strictly relying on $nextBooking logic above is safer, but keeping logic consistent)
 
         $conversations = Booking::with(['conversation.messages' => function ($query) {
             $query->latest()->limit(1);
         }, 'customer', 'repairerProfile.user'])
-            // 1. Get bookings where I am the CUSTOMER
             ->where('customer_id', $user->user_id)
-            // 2. OR bookings where I am the REPAIRER (via profile)
             ->orWhereHas('repairerProfile', function ($q) use ($user) {
                 $q->where('user_id', $user->user_id);
             })
-            ->latest() // Show newest jobs first
+            ->latest()
             ->get()
             ->map(function ($booking) use ($user) {
-
-                // A. Determine the "Other Person"
                 $isMeCustomer = $booking->customer_id === $user->user_id;
 
                 if ($isMeCustomer) {
-                    // I am Customer, show Repairer Name
                     $otherUserName = $booking->repairerProfile->business_name ?? $booking->repairerProfile->user->name ?? 'Repairer';
                 } else {
-                    // I am Repairer, show Customer Name
                     $otherUserName = $booking->customer->name ?? 'Customer';
                 }
 
-                // B. Check if a real conversation exists yet
                 $chat = $booking->conversation;
                 $lastMsg = $chat ? $chat->messages->first() : null;
 
-                // C. Build the Chat Card Data
                 return [
-                    'id' => $chat ? $chat->id : 'new_' . $booking->id, // Fake ID if new
+                    'id' => $chat ? $chat->id : 'new_' . $booking->id,
                     'booking_id' => $booking->id,
                     'other_user_name' => $otherUserName,
                     'service_type' => $booking->service_type,
-
-                    // IF message exists, show it. IF NOT, show prompt.
                     'last_message_content' => $lastMsg ? $lastMsg->content : 'Booking confirmed. Tap to chat!',
                     'last_message_time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : $booking->created_at->diffForHumans(),
                     'unread_count' => 0,
@@ -145,18 +156,14 @@ class DashboardController extends Controller
         // 4. Return to React
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
-
-            // 🛑 CRITICAL FIX: Send location separately!
-            // This bypasses the middleware stripping issue.
             'userLocation' => $user->location,
-
             'isRepairer' => $user->isRepairer ?? false,
 
             'repairers' => User::where('user_id', '!=', Auth::id())
                 ->has('repairerProfile')
                 ->with([
-                    'location', // User location
-                    'repairerProfile.location', // Business location
+                    'location',
+                    'repairerProfile.location',
                     'repairerProfile.skills',
                     'repairerProfile.availabilities'
                 ])
@@ -166,11 +173,17 @@ class DashboardController extends Controller
             'schedule' => $schedule,
             'isGoogleConnected' => $isGoogleConnected,
             'jobs' => $jobs,
-            'appointment' => $appointment,
+
+            // --- FIXED SECTION BELOW ---
             'quickAccess' => $quickAccess,
-            'history' => $history,
             'topServices' => $topServices,
-            'conversations' => $conversations
+            'conversations' => $conversations,
+            'history' => $history,
+
+            // Use the $appointment variable we calculated at the top. 
+            // If it's null, send ['exists' => false]
+            'appointment' => $appointment ? $appointment : ['exists' => false],
+            'repairerReviews' => $repairerReviews ?? [],
         ]);
     }
 }

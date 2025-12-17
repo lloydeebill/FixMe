@@ -95,6 +95,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::post('/bookings/{id}/approve', [BookingController::class, 'approve'])->name('bookings.approve');
     Route::post('/bookings/{id}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
+    Route::post('/bookings/{id}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
 
     // --- SETTINGS ---
     Route::get('/settings', function () {
@@ -136,5 +137,7 @@ Route::middleware(['auth'])->group(function () {
     // Note: We define these in web.php so they share the user session automatically
     Route::post('/api/messages/{bookingId}', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::get('/api/messages/{bookingId}', [ChatController::class, 'fetchMessages'])->name('chat.fetch');
+
+    Route::post('/bookings/{id}/review', [BookingController::class, 'storeReview'])->name('bookings.review');
   });
 });
