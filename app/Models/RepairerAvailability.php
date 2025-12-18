@@ -10,7 +10,7 @@ class RepairerAvailability extends Model
     use HasFactory;
 
     protected $fillable = [
-        'repairer_profile_id', // ✅ Correct column name
+        'repairer_profile_id',
         'day_of_week',
         'start_time',
         'end_time',

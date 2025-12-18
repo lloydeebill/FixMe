@@ -13,7 +13,7 @@ class LandingController extends Controller
 
         $isMobile = preg_match("/(android|avantgo|blackberry|bolt|boost|cricket|docomo|fone|hiptop|mini|mobi|palm|phone|pie|samsung|scp|tizen|up\.browser|up\.link|vodafone|wap|webos|windows phone|iemobile|wii|xbox)/i", $request->header('User-Agent'));
 
-        // 2. If it's mobile, render the MobileLogin page immediately.
+        // If it's mobile, render the MobileLogin page immediately.
         if ($isMobile) {
             return Inertia::render('MobileLanding', [
                 // Only pass required auth data to the functional page
@@ -21,8 +21,8 @@ class LandingController extends Controller
             ]);
         }
 
-        // 3. If it's desktop, render the heavy Visual Story page.
-        // We pass Auth data, but the page itself will handle API fetching internally.
+        // If it's desktop, render the heavy Visual Story page.
+        //pass Auth data, but the page itself will handle API fetching internally.
         return Inertia::render('DesktopLanding', [
             'auth' => ['user' => Auth::user()],
         ]);

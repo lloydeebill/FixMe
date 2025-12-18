@@ -31,7 +31,6 @@ class GoogleCalendarController extends Controller
                 'google_refresh_token' => $googleUser->refreshToken,
             ]);
 
-            // ✅ FIXED: Changed from 'availability.edit' to 'dashboard'
             return redirect()->route('dashboard')
                 ->with('success', 'Google Calendar successfully connected!');
         } catch (\Exception $e) {

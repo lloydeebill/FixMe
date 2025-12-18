@@ -72,7 +72,6 @@ class RepairerController extends Controller
                 'bio'           => $request->bio,
                 'rating'        => 0,
                 'clients_helped' => 0,
-                // ❌ focus_area REMOVED
             ]);
 
             // C. Sync Skills (The Pivot Table)

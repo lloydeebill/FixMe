@@ -14,7 +14,7 @@ const MobileDashboard = ({
     onSwitchToWork,
     history = [], 
     conversations = [],
-    pendingReviewsCount = 0, // 👈 Received from Dashboard.jsx
+    pendingReviewsCount = 0, 
 }) => {
 
     // 1. STATE: Active tab defaults to 'home'
@@ -227,7 +227,6 @@ const MobileDashboard = ({
                                     </div>
                                     <p className="text-sm text-gray-500 mb-4">{job.problem_description}</p>
                                     
-                                    {/* 👇 UPDATED REVIEW BUTTON LOGIC 👇 */}
                                     {job.status === 'completed' && (
                                         <>
                                             {!job.review ? (
@@ -317,8 +316,8 @@ const MobileDashboard = ({
                     icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />} 
                     isActive={activeTab === 'history'} 
                     onClick={() => setActiveTab('history')} 
-                    badge={pendingReviewsCount > 0} // 👈 Show red dot
-                    badgeCount={pendingReviewsCount} // 👈 Pass the number
+                    badge={pendingReviewsCount > 0}
+                    badgeCount={pendingReviewsCount}
                 />
 
                 <NavButton 
@@ -341,7 +340,7 @@ const MobileDashboard = ({
     );
 };
 
-// 👇 UPDATED HELPER COMPONENT (Shows Numbers!)
+
 const NavButton = ({ label, icon, isActive, onClick, badge, badgeCount, customColor }) => (
     <button 
         onClick={onClick}

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import RepairerFormFields from '@/Components/RepairerFormFields';
-import LocationPicker from '@/Components/LocationPicker'; // 👈 IMPORT THE MAP PICKER
+import LocationPicker from '@/Components/LocationPicker'; 
 
 export default function OnboardingProfile({ auth, availableSkills }) {
     const [step, setStep] = useState(1);
@@ -66,7 +66,6 @@ export default function OnboardingProfile({ auth, availableSkills }) {
         return;
     }
 
-    // 👇 Ensure a clean post call that expects a redirect
     post('/onboarding/complete', {
         // Adding onSuccess confirms the client side sees the successful response.
         onSuccess: () => {
@@ -186,7 +185,6 @@ export default function OnboardingProfile({ auth, availableSkills }) {
                                
                             </div>
 
-                             {/* 👇 THE NEW MAP PICKER IMPLEMENTATION 👇 */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
                                     

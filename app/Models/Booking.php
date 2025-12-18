@@ -35,7 +35,7 @@ class Booking extends Model
   // Connectivity back to Repairer Profile
   public function repairerProfile()
   {
-    // 🛑 FIX: Point to 'repairer_profile_id' column on this table
+
     // and link it to the RepairerProfile class (which uses standard 'id' now)
     return $this->belongsTo(RepairerProfile::class, 'repairer_profile_id');
   }
