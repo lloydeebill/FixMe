@@ -24,8 +24,6 @@ const DesktopDashboard = ({
 }) => {
     
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    
-    // 1. NEW STATE: Toggle between 'browse', 'chats', 'history'
     const [activeTab, setActiveTab] = useState('browse');
     const [reviewingJob, setReviewingJob] = useState(null); 
 
@@ -34,12 +32,12 @@ const DesktopDashboard = ({
     };
 
     const handleOpenChat = (bookingId) => {
+        if (!bookingId) return alert("Error: Booking ID missing.");
         router.visit(`/test-chat/${bookingId}`);
     };
 
     // Calculate unread messages for badge
     const unreadCount = conversations.filter(c => c.unread_count > 0).length;
-
 
     // --- VIEW HELPERS ---
 
@@ -133,7 +131,7 @@ const DesktopDashboard = ({
         </div>
     );
 
-    // 3. 🆕 RENDER HISTORY LIST
+    // 3. Render History View
     const renderHistoryView = () => (
         <div className="animate-fade-in-up">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -143,22 +141,23 @@ const DesktopDashboard = ({
             <div className="grid grid-cols-1 gap-4">
                 {history.length === 0 ? (
                     <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
-                        <p className="text-gray-400 text-lg">No completed jobs yet.</p>
+                        <p className="text-gray-400 text-lg">No job history found.</p>
+                        <p className="text-sm text-gray-500">Completed jobs will appear here.</p>
                     </div>
                 ) : (
                     history.map((job) => (
-                        <div key={job.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex items-center gap-4">
-                                <div className="h-12 w-12 bg-green-50 rounded-xl flex items-center justify-center text-2xl">✅</div>
+                        <div key={job.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div className="flex items-start gap-4">
+                                <div className="h-12 w-12 bg-green-50 text-green-600 rounded-xl flex items-center justify-center text-xl">✅</div>
                                 <div>
                                     <h3 className="font-bold text-gray-900 text-lg">{job.service_type}</h3>
                                     <p className="text-sm text-gray-500">
-                                        Completed by <span className="font-bold text-black">{job.repairer_profile?.business_name || 'Repairer'}</span> on {new Date(job.scheduled_at).toLocaleDateString()}
+                                        Completed by <span className="font-bold text-black">{job.repairer_profile?.business_name || 'Repairer'}</span>
                                     </p>
+                                    <p className="text-xs text-gray-400 mt-1">{new Date(job.scheduled_at).toLocaleDateString()}</p>
                                 </div>
                             </div>
 
-                            {/* Rating Action */}
                             <div className="w-full md:w-auto">
                                 {!job.review ? (
                                     <button 
@@ -180,8 +179,7 @@ const DesktopDashboard = ({
         </div>
     );
 
-    // ------------------------------------
-
+    // --- MAIN RENDER ---
     return (
         <>
             <Head title="Dashboard" />
@@ -197,7 +195,7 @@ const DesktopDashboard = ({
                                 <h2 className="font-black text-2xl text-[#1b6ed1] tracking-tighter">FixMe.</h2>
                             </div>
 
-                            {/* 👇 NEW NAVIGATION TABS */}
+                            {/* NAVIGATION */}
                             <nav className="hidden md:flex gap-1 bg-gray-100 p-1 rounded-lg">
                                 <button 
                                     onClick={() => {onSelectCategory(null); setActiveTab('browse');}}
@@ -218,7 +216,6 @@ const DesktopDashboard = ({
                                         <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{unreadCount}</span>
                                     )}
                                 </button>
-                                {/* 🆕 HISTORY TAB BUTTON */}
                                 <button 
                                     onClick={() => setActiveTab('history')}
                                     className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all flex items-center gap-2 ${
@@ -235,17 +232,10 @@ const DesktopDashboard = ({
 
                         {/* USER DROPDOWN */}
                         <div className="relative">
-                            <button 
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className="flex items-center gap-2 hover:bg-gray-100 px-3 py-2 rounded-full transition-colors"
-                            >
-                                <div className="w-8 h-8 bg-[#1b6ed1] rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                    {user.name.charAt(0)}
-                                </div>
+                            <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 hover:bg-gray-100 px-3 py-2 rounded-full transition-colors">
+                                <div className="w-8 h-8 bg-[#1b6ed1] rounded-full flex items-center justify-center text-white font-bold text-sm">{user.name.charAt(0)}</div>
                                 <span className="font-bold text-sm text-gray-700 hidden md:block">{user.name}</span>
-                                <svg className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
+                                <svg className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                             </button>
 
                             {isDropdownOpen && (
@@ -254,10 +244,7 @@ const DesktopDashboard = ({
                                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 z-20 overflow-hidden animate-fade-in-up">
                                         <div className="py-2">
                                             <button 
-                                                onClick={() => {
-                                                    setIsDropdownOpen(false);
-                                                    onSwitchToWork();
-                                                }}
+                                                onClick={() => { setIsDropdownOpen(false); onSwitchToWork(); }}
                                                 className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-[#1b6ed1] flex items-center gap-3 transition-colors"
                                             >
                                                 <div className="bg-blue-50 p-1.5 rounded-lg text-blue-600">
@@ -266,10 +253,7 @@ const DesktopDashboard = ({
                                                 {user.isRepairer ? 'Switch to Work Mode' : 'Become a Pro'}
                                             </button>
                                             <div className="border-t border-gray-100 my-1"></div>
-                                            <button 
-                                                onClick={handleLogout}
-                                                className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center gap-3 transition-colors"
-                                            >
+                                            <button onClick={handleLogout} className="w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-red-50 hover:text-red-600 flex items-center gap-3 transition-colors">
                                                 <div className="bg-gray-100 p-1.5 rounded-lg text-gray-500 group-hover:text-red-600">
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                                                 </div>
@@ -284,17 +268,14 @@ const DesktopDashboard = ({
                 </div>
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 mt-8">
-                    
-                    {/* --- 2. MAIN GRID LAYOUT --- */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         
                         {/* LEFT COLUMN (2/3 Width) */}
                         <div className="lg:col-span-2 space-y-8">
                             
-                            {/* VIEW A: BROWSE SERVICES (WITH TOP SERVICES) */}
+                            {/* VIEW A: BROWSE SERVICES */}
                             {activeTab === 'browse' && (
                                 <>
-                                    {/* WELCOME BANNER (Only if no category selected) */}
                                     {!selectedCategory && (
                                         <div className="bg-gradient-to-r from-[#1b6ed1] to-blue-600 p-8 rounded-2xl shadow-lg text-white flex justify-between items-center animate-fade-in-up mb-8">
                                             <div>
@@ -305,7 +286,6 @@ const DesktopDashboard = ({
                                         </div>
                                     )}
 
-                                    {/* CATEGORIES GRID (Only if no category selected) */}
                                     {!selectedCategory && (
                                         <div className="animate-fade-in-up">
                                             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -313,11 +293,7 @@ const DesktopDashboard = ({
                                             </h2>
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                                 {categories.map((cat, index) => (
-                                                    <button 
-                                                        key={index} 
-                                                        onClick={() => onSelectCategory(cat)}
-                                                        className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
-                                                    >
+                                                    <button key={index} onClick={() => onSelectCategory(cat)} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-3 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group">
                                                         <div className={`w-16 h-16 ${cat.color} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
                                                             {renderCategoryIcon(cat.icon)}
                                                         </div>
@@ -328,11 +304,9 @@ const DesktopDashboard = ({
                                         </div>
                                     )}
                                     
-                                    {/* TOP SERVICES (Only if no category selected) */}
                                     {!selectedCategory && renderTopServices()}
 
-
-                                    {/* REPAIRER LIST (If Category Selected) */}
+                                    {/* REPAIRER LIST */}
                                     {selectedCategory && (
                                         <div className="animate-fade-in-right">
                                             <div className="flex items-center gap-4 mb-6">
@@ -362,9 +336,7 @@ const DesktopDashboard = ({
                                                                 <div className="flex-1 min-w-0">
                                                                     <div className="flex justify-between items-start">
                                                                         <h3 className="font-bold text-lg text-gray-900 truncate">{repairer.repairer_profile.business_name}</h3>
-                                                                        <span className="flex items-center text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg border border-yellow-100">
-                                                                            ★ {repairer.repairer_profile.rating || 'New'}
-                                                                        </span>
+                                                                        <span className="flex items-center text-xs font-bold bg-yellow-50 text-yellow-700 px-2 py-1 rounded-lg border border-yellow-100">★ {repairer.repairer_profile.rating || 'New'}</span>
                                                                     </div>
                                                                     <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">📍 {repairer.location?.address || 'Davao City'}</p>
                                                                 </div>
@@ -389,7 +361,7 @@ const DesktopDashboard = ({
                             {/* VIEW B: MESSAGES */}
                             {activeTab === 'chats' && renderChatsView()}
 
-                            {/* 🆕 VIEW C: HISTORY */}
+                            {/* VIEW C: HISTORY */}
                             {activeTab === 'history' && renderHistoryView()}
 
                         </div>
@@ -419,8 +391,12 @@ const DesktopDashboard = ({
                                                 <span className="font-mono font-bold">{appointment.time}</span>
                                             </div>
 
-                                            <button className="w-full bg-[#1b6ed1] text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md">
-                                                View Details
+                                            {/* 👇 UPDATED BUTTON: CHAT WITH REPAIRER */}
+                                            <button 
+                                                onClick={() => handleOpenChat(appointment.id)}
+                                                className="w-full bg-[#1b6ed1] text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2"
+                                            >
+                                                <span className="text-xl">💬</span> Chat with Repairer
                                             </button>
                                         </div>
                                     ) : (
