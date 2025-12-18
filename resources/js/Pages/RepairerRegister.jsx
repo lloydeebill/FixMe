@@ -3,7 +3,6 @@ import { Head, useForm, Link } from '@inertiajs/react';
 import RepairerFormFields from '@/Components/RepairerFormFields'; 
 import LocationPicker from '@/Components/LocationPicker';       
 
-// 🛑 FIX: Accept 'availableSkills' from the Controller
 export default function RepairerRegister({ auth, availableSkills }) {
     const { data, setData, post, processing, errors } = useForm({
         // Matches the same structure as Onboarding
@@ -60,15 +59,13 @@ export default function RepairerRegister({ auth, availableSkills }) {
             <div className="w-full sm:max-w-lg mt-6 px-6 py-8 bg-white shadow-md overflow-hidden sm:rounded-lg">
                 <form onSubmit={submit} className="space-y-5">
                     
-                    {/* 👇 1. REUSED FORM FIELDS (Business Name, Bio, Skills) */}
                     <RepairerFormFields 
                         data={data}
                         setData={setData}
                         errors={errors}
-                        availableSkills={availableSkills} // 👈 Now this has data!
+                        availableSkills={availableSkills} // 
                     />
 
-                    {/* 👇 2. REUSED LOCATION PICKER */}
                     <div className="pt-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Business Location</label>
                         <LocationPicker 

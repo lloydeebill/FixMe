@@ -31,21 +31,18 @@ class ChatController extends Controller
         $user = Auth::user();
 
         // A. Identify the Booking and the Participants
-        // We MUST use 'with' to grab the linked profile, then the linked user
         $booking = Booking::with('repairerProfile')->findOrFail($bookingId);
 
-        // 1. Get Customer ID (Easy, it's right there)
+        // 1. Get Customer ID 
         $customerUserId = $booking->customer_id;
 
-        // 2. Get Repairer User ID (Harder, we must go through the profile)
-        // logic: Booking -> RepairerProfile -> user_id
+        // 2. Get Repairer User ID 
         if (!$booking->repairerProfile) {
             return redirect()->back()->withErrors(['message' => 'No repairer assigned yet.']);
         }
         $repairerUserId = $booking->repairerProfile->user_id;
 
         // B. Determine Receiver
-        // We check against the current user's ID
         if ($user->user_id == $customerUserId) {
             // I am the Customer -> Send to the Repairer's USER ID (not profile ID)
             $receiverId = $repairerUserId;

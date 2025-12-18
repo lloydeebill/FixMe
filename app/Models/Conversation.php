@@ -24,7 +24,6 @@ class Conversation extends Model
     }
 
     // 3. Link to the Sender (User)
-    // We specify 'user_id' because you renamed your primary key
     public function sender()
     {
         return $this->belongsTo(User::class, 'sender_id', 'user_id');

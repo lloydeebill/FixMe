@@ -7,15 +7,14 @@ use App\Http\Middleware\HandleInertiaRequests;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        channels: __DIR__.'/../routes/channels.php',
+        channels: __DIR__ . '/../routes/channels.php',
         web: __DIR__ . '/../routes/web.php',
         commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // FIX: Trust Railway's Load Balancer
+
         // This tells Laravel: "If Railway says the connection is HTTPS, believe it."
-        // This fixes the Mixed Content error.
         $middleware->trustProxies(at: '*');
 
         // Register Inertia Middleware

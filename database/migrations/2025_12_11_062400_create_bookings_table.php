@@ -20,7 +20,7 @@ return new class extends Migration
                 ->onDelete('cascade');
 
             // 2. LINK TO REPAIRER (The Profile)
-            // 👇 THE FIX: Use foreignId to match your other tables.
+            // THE FIX: Use foreignId to match your other tables.
             // This automatically links 'repairer_profile_id' -> 'repairer_profiles.id'
             $table->foreignId('repairer_profile_id')
                 ->constrained('repairer_profiles')
@@ -30,7 +30,7 @@ return new class extends Migration
             $table->string('service_type'); // e.g. "Aircon Repair"
             $table->dateTime('scheduled_at'); // Start Time
 
-            // 👇 Consolidated Google Fields
+            // Consolidated Google Fields
             $table->dateTime('end_time')->nullable();
             $table->string('google_event_id')->nullable();
 

@@ -53,7 +53,6 @@ export default function TestChat({ booking, currentUser, initialMessages }) {
                ============================================== */}
             <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shadow-sm">
                 <div className="flex items-center gap-3">
-                    {/* 👇 THE BACK BUTTON */}
                     <Link href="/app" className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors text-gray-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                     </Link>

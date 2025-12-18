@@ -14,11 +14,6 @@ class EnsureOnboardingComplete
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        // LOGIC: If the user is missing BASIC info (Location/Gender) OR 
-        // they are a Repairer missing BUSINESS info...
-        // ...send them to the MAIN onboarding page.
-
-        // 1. Check if "Complete" (This covers both Customers and Repairers based on your User Model logic)
         // We combine profileIsComplete, roleIsSelected, and repairerDetailsAreComplete into one check effectively.
         // If ANY part is missing, we consider them "Incomplete".
         $isComplete = $user->profileIsComplete() && $user->repairerDetailsAreComplete();

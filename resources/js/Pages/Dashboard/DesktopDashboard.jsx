@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
+import ReviewModal from '../../Components/ReviewModal'; 
 
 // --- HELPER: Render Icon based on Category ---
 const renderCategoryIcon = (iconChar) => {
@@ -9,23 +10,24 @@ const renderCategoryIcon = (iconChar) => {
 const DesktopDashboard = ({ 
     user, 
     appointment, 
-    
-    // 👇 NEW PROPS
     categories, 
     selectedCategory, 
     onSelectCategory, 
     repairers, 
     onRepairerSelect,
-    topServices, // 👈 Kept!
+    topServices, 
     
     onSwitchToWork,
-    conversations = [] // 👈 Kept!
+    conversations = [],
+    history = [], 
+    pendingReviewsCount = 0
 }) => {
     
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     
-    // 1. NEW STATE: Toggle between 'browse' and 'chats'
+    // 1. NEW STATE: Toggle between 'browse', 'chats', 'history'
     const [activeTab, setActiveTab] = useState('browse');
+    const [reviewingJob, setReviewingJob] = useState(null); 
 
     const handleLogout = () => {
         router.post('/logout');
@@ -130,6 +132,54 @@ const DesktopDashboard = ({
             </div>
         </div>
     );
+
+    // 3. 🆕 RENDER HISTORY LIST
+    const renderHistoryView = () => (
+        <div className="animate-fade-in-up">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="bg-green-100 text-green-600 p-1 rounded">📂</span> Job History
+            </h2>
+            
+            <div className="grid grid-cols-1 gap-4">
+                {history.length === 0 ? (
+                    <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
+                        <p className="text-gray-400 text-lg">No completed jobs yet.</p>
+                    </div>
+                ) : (
+                    history.map((job) => (
+                        <div key={job.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 bg-green-50 rounded-xl flex items-center justify-center text-2xl">✅</div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 text-lg">{job.service_type}</h3>
+                                    <p className="text-sm text-gray-500">
+                                        Completed by <span className="font-bold text-black">{job.repairer_profile?.business_name || 'Repairer'}</span> on {new Date(job.scheduled_at).toLocaleDateString()}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Rating Action */}
+                            <div className="w-full md:w-auto">
+                                {!job.review ? (
+                                    <button 
+                                        onClick={() => setReviewingJob(job)}
+                                        className="w-full md:w-auto px-6 py-2 bg-yellow-400 hover:bg-yellow-500 text-black font-bold rounded-xl shadow-sm transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <span>⭐</span> Leave a Review
+                                    </button>
+                                ) : (
+                                    <div className="w-full md:w-auto px-6 py-2 bg-gray-50 text-gray-400 font-bold rounded-xl border border-gray-100 text-center">
+                                        You rated this {job.review.rating} ★
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+
     // ------------------------------------
 
     return (
@@ -166,6 +216,18 @@ const DesktopDashboard = ({
                                     Messages
                                     {unreadCount > 0 && (
                                         <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{unreadCount}</span>
+                                    )}
+                                </button>
+                                {/* 🆕 HISTORY TAB BUTTON */}
+                                <button 
+                                    onClick={() => setActiveTab('history')}
+                                    className={`px-4 py-1.5 text-sm font-bold rounded-md transition-all flex items-center gap-2 ${
+                                        activeTab === 'history' ? 'bg-white text-black shadow-sm' : 'text-gray-500 hover:text-gray-900'
+                                    }`}
+                                >
+                                    Job History
+                                    {pendingReviewsCount > 0 && (
+                                        <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">{pendingReviewsCount}</span>
                                     )}
                                 </button>
                             </nav>
@@ -229,9 +291,7 @@ const DesktopDashboard = ({
                         {/* LEFT COLUMN (2/3 Width) */}
                         <div className="lg:col-span-2 space-y-8">
                             
-                            {/* -------------------------
-                                VIEW A: BROWSE SERVICES (WITH TOP SERVICES)
-                               ------------------------- */}
+                            {/* VIEW A: BROWSE SERVICES (WITH TOP SERVICES) */}
                             {activeTab === 'browse' && (
                                 <>
                                     {/* WELCOME BANNER (Only if no category selected) */}
@@ -326,10 +386,11 @@ const DesktopDashboard = ({
                                 </>
                             )}
                             
-                            {/* -------------------------
-                                VIEW B: MESSAGES (Rendered by helper)
-                               ------------------------- */}
+                            {/* VIEW B: MESSAGES */}
                             {activeTab === 'chats' && renderChatsView()}
+
+                            {/* 🆕 VIEW C: HISTORY */}
+                            {activeTab === 'history' && renderHistoryView()}
 
                         </div>
 
@@ -367,7 +428,7 @@ const DesktopDashboard = ({
                                             <p className="text-gray-900 font-bold mb-1">No Upcoming Fixes</p>
                                             <p className="text-gray-500 text-sm mb-6">Your schedule is currently empty.</p>
                                             <button 
-                                                onClick={() => { onSelectCategory(null); setActiveTab('browse'); }} // Reset view and switch to browse
+                                                onClick={() => { onSelectCategory(null); setActiveTab('browse'); }} 
                                                 className="w-full bg-black text-white py-3 rounded-xl font-bold hover:bg-gray-800 transition"
                                             >
                                                 Find a Service
@@ -388,6 +449,14 @@ const DesktopDashboard = ({
                     </div>
                 </div>
             </div>
+
+            {/* REVIEW MODAL (Global) */}
+            {reviewingJob && (
+                <ReviewModal 
+                    booking={reviewingJob} 
+                    onClose={() => setReviewingJob(null)} 
+                />
+            )}
         </>
     );
 };

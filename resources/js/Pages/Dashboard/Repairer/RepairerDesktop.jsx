@@ -576,7 +576,6 @@ export default function RepairerDesktop({
         </div>
     );
 
-    // 🛑 BLOCKING VIEW
     if (!isGoogleConnected) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">

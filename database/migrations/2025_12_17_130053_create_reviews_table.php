@@ -23,14 +23,14 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id');
             // ...then manually define the foreign key pointing to 'user_id'
             $table->foreign('customer_id')
-                ->references('user_id') // 👈 The key from your User model
+                ->references('user_id') //
                 ->on('users')
                 ->onDelete('cascade');
 
             // 3. Link to Repairers (The Fix)
             $table->unsignedBigInteger('repairer_id');
             $table->foreign('repairer_id')
-                ->references('user_id') // 👈 The key from your User model
+                ->references('user_id') //
                 ->on('users')
                 ->onDelete('cascade');
 

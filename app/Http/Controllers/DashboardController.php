@@ -22,6 +22,7 @@ class DashboardController extends Controller
         $schedule = [];
         $jobs = [];
         $isGoogleConnected = false;
+        $repairerReviews = [];
 
         if ($user->repairerProfile) {
             $isGoogleConnected = !empty($user->google_refresh_token);
@@ -41,7 +42,8 @@ class DashboardController extends Controller
                 });
             }
 
-            $jobs = Booking::with(['customer.location']) // 👈 KEY CHANGE: Load 'location' relation via customer
+            // REPAIRER JOBS LOGIC
+            $jobs = Booking::with(['customer.location'])
                 ->where('repairer_profile_id', $user->repairerProfile->id)
                 ->latest()
                 ->get()
@@ -52,8 +54,9 @@ class DashboardController extends Controller
                         'service_type' => $job->service_type,
                         'scheduled_at' => $job->scheduled_at,
                         'problem_description' => $job->problem_description,
+                        // Ensure price is passed if available
+                        'price' => $job->price ?? null,
 
-                        // 👇 THE FIX: Access the coordinate via the relationships
                         // Logic: "Get this Job's Customer -> Get their Location -> Get the Latitude"
                         'latitude'  => $job->customer->location->latitude ?? null,
                         'longitude' => $job->customer->location->longitude ?? null,
@@ -68,7 +71,7 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // --- PREPARE CUSTOMER DATA ---
+        // --- PREPARE CUSTOMER DATA (USER MODE) ---
         $nextBooking = Booking::with('repairerProfile.user')
             ->where('customer_id', $user->user_id)
             ->where('status', 'confirmed')
@@ -76,11 +79,15 @@ class DashboardController extends Controller
             ->orderBy('scheduled_at', 'asc')
             ->first();
 
-        // LOGIC: You calculate appointment here correctly
+        // LOGIC: Calculate appointment
         $appointment = null;
         if ($nextBooking) {
             $date = \Carbon\Carbon::parse($nextBooking->scheduled_at);
-            $repairerName = $nextBooking->repairerProfile->user->name ?? 'Repairer';
+
+            // 👇 FIX 1: Use Business Name instead of User Name
+            $repairerName = $nextBooking->repairerProfile->business_name
+                ?? $nextBooking->repairerProfile->user->name
+                ?? 'Repairer';
 
             $appointment = [
                 'exists' => true,
@@ -88,7 +95,7 @@ class DashboardController extends Controller
                 'month' => $date->format('M'),
                 'time' => $date->format('h:i A'),
                 'type' => $nextBooking->service_type,
-                'repairer' => $repairerName,
+                'repairer' => $repairerName, // ✅ Updated
                 'status' => $nextBooking->status,
             ];
         }
@@ -101,13 +108,16 @@ class DashboardController extends Controller
             ->map(function ($profile) {
                 $mainSkill = $profile->skills->first()->name ?? 'General Repairer';
 
+                // 👇 FIX 2: Use Business Name for Card Title & Avatar
+                $displayName = $profile->business_name ?? $profile->user->name ?? 'Unknown';
+
                 return [
                     'id' => $profile->user->user_id,
-                    'name' => $profile->user->name ?? 'Unknown',
+                    'name' => $displayName, // ✅ Updated
                     'location' => $profile->location ?? $profile->user->location,
                     'role' => $mainSkill,
                     'rating' => $profile->rating,
-                    'image' => 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($profile->user->name ?? 'U'),
+                    'image' => 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($displayName),
                     'repairer_profile' => $profile,
                 ];
             });
@@ -123,20 +133,12 @@ class DashboardController extends Controller
         $history = Booking::where('customer_id', $user->user_id)
             ->where('status', 'completed')
             ->with(['repairerProfile', 'review'])
-
-            // 👇 ADD THIS: Count the reviews (0 or 1)
             ->withCount('review')
-
-            // 👇 PRIMARY SORT: Put '0' (Unreviewed) before '1' (Reviewed)
             ->orderBy('review_count', 'asc')
-
-            // 👇 SECONDARY SORT: Within those groups, show newest first
             ->orderBy('scheduled_at', 'desc')
-
             ->get();
 
-        // 2. FETCH ACTIVE APPOINTMENT (Redundant query removed, strictly relying on $nextBooking logic above is safer, but keeping logic consistent)
-
+        // 2. FETCH CONVERSATIONS
         $conversations = Booking::with(['conversation.messages' => function ($query) {
             $query->latest()->limit(1);
         }, 'customer', 'repairerProfile.user'])
@@ -150,7 +152,10 @@ class DashboardController extends Controller
                 $isMeCustomer = $booking->customer_id === $user->user_id;
 
                 if ($isMeCustomer) {
-                    $otherUserName = $booking->repairerProfile->business_name ?? $booking->repairerProfile->user->name ?? 'Repairer';
+                    // 👇 FIX 3: Use Business Name in Messages
+                    $otherUserName = $booking->repairerProfile->business_name
+                        ?? $booking->repairerProfile->user->name
+                        ?? 'Repairer';
                 } else {
                     $otherUserName = $booking->customer->name ?? 'Customer';
                 }
@@ -161,7 +166,7 @@ class DashboardController extends Controller
                 return [
                     'id' => $chat ? $chat->id : 'new_' . $booking->id,
                     'booking_id' => $booking->id,
-                    'other_user_name' => $otherUserName,
+                    'other_user_name' => $otherUserName, // ✅ Updated
                     'service_type' => $booking->service_type,
                     'last_message_content' => $lastMsg ? $lastMsg->content : 'Booking confirmed. Tap to chat!',
                     'last_message_time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : $booking->created_at->diffForHumans(),

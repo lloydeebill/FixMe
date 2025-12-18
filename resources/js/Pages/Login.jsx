@@ -25,7 +25,7 @@ export default function Login() {
         <div className="flex-1 flex flex-col justify-start items-center w-full">
           <div className="w-full max-w-sm">
             
-            {/* 🚨 GLOBAL SUCCESS MESSAGE 🚨 
+            {/* 
                 This sits OUTSIDE the AuthSwitch, so it stays visible 
                 even when the form switches or reloads. 
             */}
