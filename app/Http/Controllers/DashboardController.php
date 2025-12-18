@@ -41,10 +41,26 @@ class DashboardController extends Controller
                 });
             }
 
-            $jobs = Booking::with('customer')
+            $jobs = Booking::with(['customer.location']) // 👈 KEY CHANGE: Load 'location' relation via customer
                 ->where('repairer_profile_id', $user->repairerProfile->id)
                 ->latest()
-                ->get();
+                ->get()
+                ->map(function ($job) {
+                    return [
+                        'id' => $job->id,
+                        'status' => $job->status,
+                        'service_type' => $job->service_type,
+                        'scheduled_at' => $job->scheduled_at,
+                        'problem_description' => $job->problem_description,
+
+                        // 👇 THE FIX: Access the coordinate via the relationships
+                        // Logic: "Get this Job's Customer -> Get their Location -> Get the Latitude"
+                        'latitude'  => $job->customer->location->latitude ?? null,
+                        'longitude' => $job->customer->location->longitude ?? null,
+
+                        'customer' => $job->customer,
+                    ];
+                });
 
             $repairerReviews = \App\Models\Review::where('repairer_id', $user->user_id)
                 ->with('customer') // Get customer name/avatar
