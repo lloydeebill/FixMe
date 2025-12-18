@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
 
-            // 👇 ADDED THIS LINE (Standard Laravel Verification)
+            // (Standard Laravel Verification)
             $table->timestamp('email_verified_at')->nullable();
 
             $table->string('password');

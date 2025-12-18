@@ -18,7 +18,6 @@ export default function MobileLanding() {
                 <h1 className="text-xl font-bold text-gray-800">Fix Me - Access</h1>
             </div>
             
-            {/* 💥 The core functional element is AuthSwitch 💥 */}
             {/* This renders the Sign In form by default, with tabs for Sign Up */}
             <AuthSwitch /> 
         </div>

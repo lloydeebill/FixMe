@@ -95,7 +95,7 @@ export default function RepairerMap({ repairers, userLocation, userName = "You" 
                 {/* 2. YOUR PIN (Using Custom Icon) */}
                 <Marker 
                     position={myPosition} 
-                    icon={createLabelIcon("You", 'user')} // 👈 Passes "You"
+                    icon={createLabelIcon("You", 'user')} //  Passes "You"
                 >
                     <Popup>You are here</Popup>
                 </Marker>
@@ -110,7 +110,7 @@ export default function RepairerMap({ repairers, userLocation, userName = "You" 
                             <Marker 
                                 key={repairer.user_id} 
                                 position={[loc.latitude, loc.longitude]}
-                                icon={createLabelIcon(name, 'repairer')} // 👈 Passes Business Name
+                                icon={createLabelIcon(name, 'repairer')} // Passes Business Name
                             >
                                 <Popup>
                                     <strong>{name}</strong><br/>

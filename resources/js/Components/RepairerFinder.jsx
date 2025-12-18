@@ -22,7 +22,7 @@ const REPAIRERS_DATA = {
 
 const CATEGORIES = ['Electrical', 'Appliances', 'Clothes', 'Plumbing'];
 
-// 🚨 Added 'gridConfig' prop with a smart default
+// Added 'gridConfig' prop with a smart default
 const RepairerFinder = ({ className = "", onRepairerSelect, gridConfig = "grid-cols-1 md:grid-cols-2" }) => {
     const [activeCategory, setActiveCategory] = useState(CATEGORIES[0]);
     const activeRepairers = REPAIRERS_DATA[activeCategory] || [];
@@ -58,7 +58,6 @@ const RepairerFinder = ({ className = "", onRepairerSelect, gridConfig = "grid-c
             </div>
 
             {/* --- Repairer Grid --- */}
-            {/* 🚨 We use the dynamic 'gridConfig' prop here */}
             <div className={`grid gap-4 pt-2 ${gridConfig}`}>
                 {activeRepairers.length > 0 ? (
                     activeRepairers.map((repairer) => (

@@ -16,7 +16,6 @@ class RepairerAvailabilityController extends Controller
     {
         $user = Auth::user();
 
-        // 🛑 FIX: Use standard 'id'
         $repairerId = $user->repairerProfile->id;
 
         // Fetch existing schedule from DB
@@ -54,7 +53,6 @@ class RepairerAvailabilityController extends Controller
 
         $user = Auth::user();
 
-        // 🛑 FIX: Use standard 'id'
         $repairerId = $user->repairerProfile->id;
 
         foreach ($request->schedule as $dayData) {
@@ -81,7 +79,6 @@ class RepairerAvailabilityController extends Controller
 
         $user = Auth::user();
 
-        // 🛑 FIX: Use standard 'id'
         $repairerId = $user->repairerProfile->id;
 
         $date = Carbon::parse($request->date);

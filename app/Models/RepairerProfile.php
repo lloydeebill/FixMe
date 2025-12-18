@@ -59,7 +59,6 @@ class RepairerProfile extends Model
      */
     public function bookingsAsRepairer(): HasMany
     {
-        // 🛑 FIX: Changed foreign key from 'repairer_id' to 'repairer_profile_id'
         return $this->hasMany(Booking::class, 'repairer_profile_id');
     }
 
@@ -68,7 +67,6 @@ class RepairerProfile extends Model
      */
     public function availabilities(): HasMany
     {
-        // 🛑 FIX: Changed foreign key from 'repairer_id' to 'repairer_profile_id'
         return $this->hasMany(RepairerAvailability::class, 'repairer_profile_id');
     }
 }

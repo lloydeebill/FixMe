@@ -35,7 +35,6 @@ return [
         ],
     ],
 
-    // 👇 THIS IS THE NEW PART YOU NEED
     'google' => [
         'client_id' => env('GOOGLE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_CLIENT_SECRET'),

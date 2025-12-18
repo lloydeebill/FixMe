@@ -1,5 +1,5 @@
 import React from 'react';
-import SkillSelector from '@/Components/SkillSelector'; // 👈 Import it
+import SkillSelector from '@/Components/SkillSelector'; 
 
 // Receive 'availableSkills' from the parent (which gets it from the Controller)
 export default function RepairerFormFields({ data, setData, errors, availableSkills }) {

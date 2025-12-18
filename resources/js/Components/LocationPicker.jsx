@@ -23,7 +23,6 @@ function DraggableMarker({ position, onLocationSelect }) {
     const eventHandlers = useMemo(
         () => ({
             dragend(e) {
-                // 🛑 FIX IS HERE: Use 'e.target' to get the marker directly
                 const marker = e.target;
                 if (marker != null) {
                     const newPos = marker.getLatLng();
@@ -67,7 +66,6 @@ function MapUpdater({ center }) {
 // --- MAIN EXPORT ---
 export default function LocationPicker({ initialLat, initialLng, onLocationChange }) {
     
-    // 📍 DEFAULT: BUENAVISTA / BUTUAN AREA
     const defaultCenter = [8.9767, 125.4089]; 
 
     // Determine starting position
@@ -149,7 +147,7 @@ export default function LocationPicker({ initialLat, initialLng, onLocationChang
                     
                     <DraggableMarker 
                         position={[position.lat, position.lng]} 
-                        onLocationSelect={updatePosition} // 👈 Link the drag event to the update function
+                        onLocationSelect={updatePosition} // 
                     />
                 </MapContainer>
             </div>

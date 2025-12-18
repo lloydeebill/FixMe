@@ -74,7 +74,7 @@ export default function RepairerDashboard({
                     onSwitchToCustomer={onSwitchToCustomer}
                     onApprove={handleApprove} 
                     onReject={handleReject}
-                    onComplete={handleComplete} // 👈 PASS IT DOWN HERE
+                    onComplete={handleComplete} 
                     onRefresh={refreshJobs}
                     onLogout={handleLogout} 
                 />

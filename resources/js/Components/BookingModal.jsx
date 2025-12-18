@@ -3,9 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// --- 1. NEW EMOJI ICONS (📍 and 🛠️) ---
 const createEmojiIcon = (type) => {
-    // 📍 for User, 🛠️ for Repairer
     const emoji = type === 'user' ? '📍' : '🛠️'; 
     
     return L.divIcon({
@@ -198,7 +196,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
                     >
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                         
-                        {/* 2. USER MARKER (📍) */}
+                        {/* SER MARKER */}
                         <Marker 
                             position={[myLocation.lat, myLocation.lng]} 
                             icon={createEmojiIcon('user')} 
@@ -206,7 +204,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
                             <Popup>You are here</Popup>
                         </Marker>
                         
-                        {/* 3. REPAIRER MARKER (🛠️) */}
+                        {/* 3. REPAIRER MARKER*/}
                         <Marker 
                             position={[repairerLat, repairerLng]} 
                             icon={createEmojiIcon('repairer')}
