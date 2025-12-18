@@ -1,10 +1,73 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { router, useForm } from '@inertiajs/react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// --- 1. LEAFLET SETUP & HELPERS ---
+
+// Fix Default Icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Emoji Marker
+const createEmojiIcon = (type) => {
+    const emoji = type === 'customer' ? '📍' : '🛠️'; 
+    return L.divIcon({
+        className: 'custom-emoji-marker',
+        html: `<div style="font-size: 30px; line-height: 1; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3)); transform: translate(-50%, -50%);">${emoji}</div>`,
+        iconSize: [0, 0], 
+        iconAnchor: [0, 0], 
+    });
+};
+
+// Auto-Fit Map
+function FitBounds({ markers }) {
+    const map = useMap();
+    useEffect(() => {
+        if (markers.length > 0) {
+            const validMarkers = markers.filter(m => m[0] !== 0 && !isNaN(m[0]));
+            if (validMarkers.length > 0) {
+                const bounds = L.latLngBounds(validMarkers);
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+        }
+    }, [markers, map]);
+    return null;
+}
+
+// Map Resizer
+function MapInvalidator() {
+    const map = useMap();
+    useEffect(() => {
+        setTimeout(() => map.invalidateSize(), 200);
+    }, [map]);
+    return null;
+}
+
+// Distance Calc
+function getDistance(lat1, lon1, lat2, lon2) {
+    if (!lat1 || !lon1 || !lat2 || !lon2) return "N/A";
+    const R = 6371; 
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return (R * c).toFixed(1);
+}
+
+// --- 2. MAIN COMPONENT ---
 
 export default function RepairerDesktop({ 
     user, 
     profile, 
-    jobs = [], // Ensure these job objects have a 'price' field!
+    jobs = [], 
     schedule = [], 
     conversations = [], 
     isGoogleConnected, 
@@ -14,13 +77,14 @@ export default function RepairerDesktop({
     onComplete, 
     onLogout 
 }) {
-    // ... (Keep existing State & Form Logic same as before) ...
-    const [isOnSchedule, setIsOnSchedule] = useState(
-        schedule && schedule.some(day => day.is_active)
-    );
+    // --- STATE ---
+    const [isOnSchedule, setIsOnSchedule] = useState(schedule && schedule.some(day => day.is_active));
     const [activeTab, setActiveTab] = useState('jobs'); 
     const [jobsSubView, setJobsSubView] = useState('menu'); 
     const [selectedStatus, setSelectedStatus] = useState('pending');
+    
+    // 🆕 MODAL STATE
+    const [selectedJob, setSelectedJob] = useState(null); 
 
     const { data, setData, put, processing } = useForm({
         schedule: (schedule && schedule.length > 0) ? schedule : [] 
@@ -28,6 +92,7 @@ export default function RepairerDesktop({
 
     const currentView = (!isOnSchedule && isGoogleConnected) ? 'schedule' : activeTab;
 
+    // --- ACTIONS ---
     const updateDay = (index, field, value) => {
         const newSchedule = [...data.schedule];
         newSchedule[index][field] = value;
@@ -59,10 +124,195 @@ export default function RepairerDesktop({
         setJobsSubView('list');
     };
 
+    // Modal Helpers
+    const handleApproveAndClose = (id) => { onApprove(id); setSelectedJob(null); };
+    const handleRejectAndClose = (id) => { onReject(id); setSelectedJob(null); };
+
+    // 🆕 COMPLETE HANDLER (With Confirmation)
+    const handleCompleteAndClose = (id) => {
+        if(confirm("Are you sure this job is finished?")) {
+            onComplete(id);
+            setSelectedJob(null);
+        }
+    };
+
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    // --- SUB-COMPONENTS ---
-    
+    // --- 3. SUB-COMPONENTS ---
+
+    // 🆕 THE DESKTOP MAP MODAL
+    const JobDetailsModal = ({ job, onClose }) => {
+        if (!job) return null;
+
+        // Coordinates
+        const repairerLat = parseFloat(profile?.location?.latitude || user?.location?.latitude || 7.1907);
+        const repairerLng = parseFloat(profile?.location?.longitude || user?.location?.longitude || 125.4553);
+        const customerLat = parseFloat(job.latitude);
+        const customerLng = parseFloat(job.longitude);
+        const hasCustomerLocation = !isNaN(customerLat) && !isNaN(customerLng);
+
+        // Map Logic
+        const mapCenter = hasCustomerLocation ? [customerLat, customerLng] : [repairerLat, repairerLng];
+        const distance = hasCustomerLocation ? getDistance(repairerLat, repairerLng, customerLat, customerLng) : "Unknown";
+
+        const openGoogleMaps = () => {
+            if (!hasCustomerLocation) return alert("No customer location available.");
+            window.open(`https://www.google.com/maps/dir/?api=1&origin=${repairerLat},${repairerLng}&destination=${customerLat},${customerLng}&travelmode=driving`, '_blank');
+        };
+
+        return (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                <div onClick={onClose} className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
+                
+                {/* Desktop Card */}
+                <div className="bg-white w-[900px] h-[600px] rounded-2xl relative z-10 shadow-2xl flex overflow-hidden animate-scale-up">
+                    
+                    {/* LEFT SIDE: MAP */}
+                    <div className="w-1/2 bg-gray-100 relative h-full">
+                        <MapContainer 
+                            key={job.id} 
+                            center={mapCenter} 
+                            zoom={13} 
+                            style={{ height: '100%', width: '100%' }}
+                        >
+                            <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                            
+                            <Marker position={[repairerLat, repairerLng]} icon={createEmojiIcon('repairer')}>
+                                <Popup><strong>You (Repairer)</strong></Popup>
+                            </Marker>
+
+                            {hasCustomerLocation && (
+                                <Marker position={[customerLat, customerLng]} icon={createEmojiIcon('customer')}>
+                                    <Popup><strong>Customer</strong><br/>{distance} km away</Popup>
+                                </Marker>
+                            )}
+
+                            {hasCustomerLocation && <FitBounds markers={[[repairerLat, repairerLng], [customerLat, customerLng]]} />}
+                            <MapInvalidator />
+                        </MapContainer>
+
+                        {/* Overlay Info */}
+                        <div className="absolute bottom-6 left-6 z-[500] bg-white/90 backdrop-blur-md px-4 py-3 rounded-xl shadow-lg border border-white/50">
+                             <div className="flex items-center gap-3">
+                                <span className="text-2xl">🚗</span>
+                                <div>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Est. Trip</p>
+                                    <p className="font-black text-gray-900 leading-none text-lg">{distance} km</p>
+                                </div>
+                             </div>
+                        </div>
+
+                        {/* Google Maps Button */}
+                        {hasCustomerLocation && (
+                            <button 
+                                onClick={openGoogleMaps}
+                                className="absolute bottom-6 right-6 z-[500] bg-blue-600 text-white h-14 w-14 rounded-full shadow-xl flex items-center justify-center text-2xl hover:bg-blue-700 active:scale-95 transition-transform border-4 border-white"
+                                title="Open in Google Maps"
+                            >
+                                🗺️
+                            </button>
+                        )}
+                    </div>
+
+                    {/* RIGHT SIDE: DETAILS */}
+                    <div className="w-1/2 p-8 flex flex-col h-full bg-white">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 ${
+                                    job.status === 'pending' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                    {job.status === 'pending' ? 'New Request' : job.status}
+                                </span>
+                                <h2 className="text-3xl font-black text-gray-900 leading-tight">{job.service_type}</h2>
+                            </div>
+                            <button onClick={onClose} className="bg-gray-100 hover:bg-gray-200 p-2 rounded-full transition-colors">
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="space-y-6 flex-grow overflow-y-auto pr-2">
+                            {/* Customer Row */}
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 bg-gray-100 rounded-full flex items-center justify-center text-xl font-black text-gray-600 border border-gray-200">
+                                    {job.customer?.name.charAt(0)}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase">Customer Name</p>
+                                    <p className="font-bold text-gray-900 text-lg">{job.customer?.name}</p>
+                                </div>
+                            </div>
+
+                            {/* Date Row */}
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 flex items-center justify-center text-xl bg-orange-50 rounded-xl">📅</div>
+                                <div>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase">Scheduled Date</p>
+                                    <p className="font-bold text-gray-900 text-lg">
+                                        {new Date(job.scheduled_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} 
+                                        <span className="text-gray-400 text-sm mx-2">|</span>
+                                        {new Date(job.scheduled_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Description Box */}
+                            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                                <p className="text-[10px] text-gray-400 font-bold uppercase mb-2">Issue Description</p>
+                                <p className="text-gray-700 font-medium leading-relaxed text-sm">
+                                    "{job.problem_description || 'No description provided.'}"
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="pt-6 border-t border-gray-100 mt-auto">
+                            {job.status === 'pending' ? (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={() => handleRejectAndClose(job.id)} 
+                                        className="py-4 rounded-xl border-2 border-red-100 text-red-600 font-bold hover:bg-red-50 transition-colors"
+                                    >
+                                        Decline
+                                    </button>
+                                    <button 
+                                        onClick={() => handleApproveAndClose(job.id)} 
+                                        className="py-4 rounded-xl bg-black text-white font-bold shadow-xl hover:bg-gray-800 transition-colors"
+                                    >
+                                        Accept Job
+                                    </button>
+                                </div>
+                            ) : job.status === 'confirmed' ? (
+                                // 🟢 THIS IS THE COMPLETE BUTTON FOR ACCEPTED JOBS
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={() => handleOpenChat(job.id)}
+                                        className="py-4 rounded-xl bg-blue-50 text-blue-600 font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
+                                    >
+                                        Message
+                                    </button>
+                                    <button 
+                                        onClick={() => handleCompleteAndClose(job.id)}
+                                        className="py-4 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg transition-colors"
+                                    >
+                                        Complete Job
+                                    </button>
+                                </div>
+                            ) : (
+                                <button 
+                                    onClick={onClose}
+                                    className="w-full py-4 rounded-xl bg-gray-100 text-gray-700 font-bold border border-gray-200"
+                                >
+                                    Close Details
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Sidebar Component
     const SidebarItem = ({ id, label, icon, disabled, badge }) => (
         <button 
             onClick={() => {
@@ -91,7 +341,7 @@ export default function RepairerDesktop({
         </button>
     );
 
-    // 1. JOBS MENU (Cards + Next Up + Price)
+    // 1. JOBS MENU
     const JobsMenu = () => {
         const pendingCount = jobs.filter(j => j.status === 'pending').length;
         const activeCount = jobs.filter(j => j.status === 'confirmed').length;
@@ -128,7 +378,7 @@ export default function RepairerDesktop({
                     </div>
                 </div>
 
-                {/* 2. NEXT SCHEDULED JOB BANNER (With Price!) */}
+                {/* 2. NEXT SCHEDULED JOB BANNER */}
                 {nextJob ? (
                     <div className="bg-white rounded-2xl shadow-lg border-l-8 border-blue-600 p-8 flex items-center justify-between">
                         <div className="flex gap-6 items-center">
@@ -154,7 +404,6 @@ export default function RepairerDesktop({
                                     <span>•</span>
                                     <span className="italic truncate max-w-md">{nextJob.problem_description || 'No description provided'}</span>
                                 </div>
-                                {/* 💰 EARNINGS BADGE */}
                                 <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-xs font-bold rounded-full">
                                     💰 Est. Earnings: ${nextJob.price || '0.00'}
                                 </span>
@@ -162,7 +411,7 @@ export default function RepairerDesktop({
                         </div>
 
                         <button 
-                            onClick={() => handleOpenJobList('confirmed')}
+                            onClick={() => setSelectedJob(nextJob)} // 👈 OPEN MODAL
                             className="bg-black text-white px-6 py-3 rounded-xl font-bold hover:bg-gray-800 transition-colors shadow-md flex items-center gap-2"
                         >
                             View Job details →
@@ -177,7 +426,7 @@ export default function RepairerDesktop({
         );
     };
 
-    // 2. JOBS LIST (THE TABLE - NOW WITH PRICE)
+    // 2. JOBS LIST (THE TABLE)
     const JobsList = () => {
         const filteredJobs = jobs.filter(j => j.status === selectedStatus);
         
@@ -203,14 +452,14 @@ export default function RepairerDesktop({
                             <th className="px-6 py-4">Service</th>
                             <th className="px-6 py-4">Customer</th>
                             <th className="px-6 py-4">Date & Time</th>
-                            <th className="px-6 py-4">Price</th> {/* 👈 NEW COLUMN */}
+                            <th className="px-6 py-4">Price</th>
                             <th className="px-6 py-4">Status</th>
                             <th className="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                         {filteredJobs.map(job => (
-                            <tr key={job.id} className="hover:bg-gray-50 transition-colors">
+                            <tr key={job.id} className="hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => setSelectedJob(job)}> {/* Click Row to Open Modal */}
                                 <td className="px-6 py-4">
                                     <div className="font-bold text-gray-900">{job.service_type}</div>
                                     <div className="text-xs text-gray-500 truncate max-w-[150px]">
@@ -225,7 +474,6 @@ export default function RepairerDesktop({
                                         month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' 
                                     })}
                                 </td>
-                                {/* 💰 PRICE DATA */}
                                 <td className="px-6 py-4 text-sm font-bold text-green-700">
                                     ${job.price || '0.00'}
                                 </td>
@@ -239,25 +487,12 @@ export default function RepairerDesktop({
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-right">
-                                    {job.status === 'pending' && (
-                                        <div className="flex justify-end gap-2">
-                                            <button onClick={() => onReject(job.id)} className="px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-50 rounded border border-red-200">Decline</button>
-                                            <button onClick={() => onApprove(job.id)} className="px-4 py-1 text-xs font-bold bg-black text-white rounded hover:bg-gray-800 shadow-sm">Accept</button>
-                                        </div>
-                                    )}
-                                    {job.status === 'confirmed' && (
-                                        <div className="flex justify-end gap-2">
-                                            <button onClick={() => handleOpenChat(job.id)} className="px-3 py-1 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200">
-                                                Message
-                                            </button>
-                                            <button onClick={() => onComplete(job.id)} className="px-4 py-1 text-xs font-bold text-white bg-green-600 hover:bg-green-700 rounded shadow-sm">
-                                                Complete
-                                            </button>
-                                        </div>
-                                    )}
-                                    {job.status === 'completed' && (
-                                        <span className="text-xs font-bold text-gray-400">Job Done</span>
-                                    )}
+                                    <button 
+                                        onClick={(e) => { e.stopPropagation(); setSelectedJob(job); }}
+                                        className="text-blue-600 hover:underline text-xs font-bold"
+                                    >
+                                        View Details
+                                    </button>
                                 </td>
                             </tr>
                         ))}
@@ -270,10 +505,7 @@ export default function RepairerDesktop({
         );
     };
 
-    // ... (ChatsView, ScheduleView, etc. remain the same) ...
-    // Keeping them concise here to save space, but ensure you include them from the previous complete snippet!
-    
-    // 3. Messages List View
+    // 3. MESSAGES VIEW
     const ChatsView = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {conversations.length === 0 ? (
@@ -299,7 +531,7 @@ export default function RepairerDesktop({
         </div>
     );
 
-    // 4. Schedule View
+    // 4. SCHEDULE VIEW
     const ScheduleView = () => (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-fit">
@@ -344,7 +576,7 @@ export default function RepairerDesktop({
         </div>
     );
 
-    // 🛑 BLOCKING VIEW: GOOGLE CALENDAR
+    // 🛑 BLOCKING VIEW
     if (!isGoogleConnected) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -361,6 +593,9 @@ export default function RepairerDesktop({
     // --- MAIN LAYOUT ---
     return (
         <div className="min-h-screen bg-gray-50 flex font-sans">
+            {/* 🆕 MODAL RENDERED HERE */}
+            <JobDetailsModal job={selectedJob} onClose={() => setSelectedJob(null)} />
+
             {/* LEFT SIDEBAR */}
             <aside className="w-64 bg-white border-r border-gray-200 fixed h-full p-6 flex flex-col justify-between z-10">
                 <div>
@@ -373,7 +608,6 @@ export default function RepairerDesktop({
                         <SidebarItem id="jobs" label="Jobs" icon="⚡" disabled={!isOnSchedule} />
                         <SidebarItem id="chats" label="Messages" icon="💬" disabled={!isOnSchedule} badge={conversations.filter(c => c.unread_count > 0).length} />
                         <SidebarItem id="schedule" label="Schedule" icon="📅" disabled={false} />
-                        <SidebarItem id="earnings" label="Earnings" icon="💰" disabled={!isOnSchedule} />
                     </nav>
                 </div>
 
@@ -399,7 +633,6 @@ export default function RepairerDesktop({
 
             {/* MAIN CONTENT AREA */}
             <main className="flex-1 ml-64 p-8">
-                {/* Hide header if drilling down into list */}
                 {!(activeTab === 'jobs' && jobsSubView === 'list') && (
                     <header className="flex justify-between items-center mb-8">
                         <div>

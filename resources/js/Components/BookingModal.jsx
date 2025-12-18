@@ -3,31 +3,33 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// --- ICONS CONFIGURATION ---
-const userIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/markers/marker-icon-blue.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
-
-const repairerIcon = new L.Icon({
-    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/markers/marker-icon-red.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
+// --- 1. NEW EMOJI ICONS (📍 and 🛠️) ---
+const createEmojiIcon = (type) => {
+    // 📍 for User, 🛠️ for Repairer
+    const emoji = type === 'user' ? '📍' : '🛠️'; 
+    
+    return L.divIcon({
+        className: 'custom-emoji-marker',
+        html: `
+            <div style="
+                font-size: 30px; 
+                line-height: 1; 
+                filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+                transform: translate(-50%, -50%); /* Centers the emoji on the location */
+            ">
+                ${emoji}
+            </div>
+        `,
+        iconSize: [0, 0], 
+        iconAnchor: [0, 0], 
+    });
+};
 
 // --- HELPER: AUTO-FIT BOUNDS ---
 function FitBounds({ markers }) {
     const map = useMap();
     useEffect(() => {
         if (markers.length > 0) {
-            // Filter out invalid (0,0) coordinates just in case
             const validMarkers = markers.filter(m => m.position[0] !== 0);
             if (validMarkers.length > 0) {
                 const bounds = L.latLngBounds(validMarkers.map(m => m.position));
@@ -38,7 +40,7 @@ function FitBounds({ markers }) {
     return null;
 }
 
-// --- HELPER: MAP RESIZER (Fixes the gray "cut through" issue) ---
+// --- HELPER: MAP RESIZER ---
 function MapInvalidator({ isExpanded }) {
     const map = useMap();
     useEffect(() => {
@@ -73,24 +75,21 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
     const [error, setError] = useState('');
     const [isMapExpanded, setIsMapExpanded] = useState(false);
 
-    // 🛑 1. INITIALIZE STATE (Safe defaults)
+    // INITIALIZE STATE
     const [myLocation, setMyLocation] = useState({
         lat: parseFloat(user?.location?.latitude || 7.1907),
         lng: parseFloat(user?.location?.longitude || 125.4553)
     });
 
-    // 🛑 2. THE CRITICAL FIX: SYNC STATE WHEN PROPS ARRIVE
-    // This makes the map jump to the correct location instantly
-   
-
-    // --- REPAIRER LOCATION LOGIC ---
+    // REPAIRER LOCATION
     const repairerLat = parseFloat(repairer?.location?.latitude || repairer?.repairer_profile?.location?.latitude || 7.1907);
     const repairerLng = parseFloat(repairer?.location?.longitude || repairer?.repairer_profile?.location?.longitude || 125.4553);
+    const repairerAddress = repairer?.location?.address || repairer?.repairer_profile?.location?.address || "Location unavailable";
 
     const distance = getDistance(myLocation.lat, myLocation.lng, repairerLat, repairerLng);
     const availabilities = repairer?.repairer_profile?.availabilities || [];
 
-    // --- FEATURE: GET BROWSER LOCATION ---
+    // GET GPS LOCATION
     const handleUseMyLocation = (e) => {
         e.preventDefault(); 
         if (navigator.geolocation) {
@@ -108,7 +107,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
         }
     };
 
-    // --- HANDLERS ---
+    // HANDLERS
     const handleDateChange = (e) => {
         const selectedDate = e.target.value;
         setError('');
@@ -199,14 +198,26 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
                     >
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                         
-                        {/* User Marker (Blue) */}
-                        <Marker position={[myLocation.lat, myLocation.lng]} icon={userIcon}>
+                        {/* 2. USER MARKER (📍) */}
+                        <Marker 
+                            position={[myLocation.lat, myLocation.lng]} 
+                            icon={createEmojiIcon('user')} 
+                        >
                             <Popup>You are here</Popup>
                         </Marker>
                         
-                        {/* Repairer Marker (Red) */}
-                        <Marker position={[repairerLat, repairerLng]} icon={repairerIcon}>
-                            <Popup>{repairer.repairer_profile.business_name}</Popup>
+                        {/* 3. REPAIRER MARKER (🛠️) */}
+                        <Marker 
+                            position={[repairerLat, repairerLng]} 
+                            icon={createEmojiIcon('repairer')}
+                        >
+                            <Popup>
+                                <div className="text-center">
+                                    <strong className="text-sm">{repairer.repairer_profile.business_name}</strong>
+                                    <hr className="my-1 border-gray-200"/>
+                                    <span className="text-xs text-gray-500">{repairerAddress}</span>
+                                </div>
+                            </Popup>
                         </Marker>
                         
                         <FitBounds markers={[{ position: [myLocation.lat, myLocation.lng] }, { position: [repairerLat, repairerLng] }]} />
@@ -233,23 +244,14 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
                         )}
                     </div>
 
-                    {/* 🛑 MAP CONTROLS */}
+                    {/* MAP CONTROLS */}
                     <div className="absolute top-4 right-16 z-[400] flex gap-2">
-                        {/* 1. Use GPS Button */}
-                        <button 
-                            onClick={handleUseMyLocation}
-                            title="Use My Current GPS Location"
-                            className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 shadow-lg transition animate-pulse"
-                        >
+                        <button onClick={handleUseMyLocation} title="Use My Current GPS Location" className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 shadow-lg transition animate-pulse">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         </button>
-
-                        {/* 2. Open Google Maps */}
                         <button onClick={openGoogleMaps} className="bg-white/90 p-2 rounded-full hover:bg-white text-black shadow-lg transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
                         </button>
-
-                        {/* 3. Expand */}
                         <button onClick={(e) => { e.preventDefault(); setIsMapExpanded(!isMapExpanded); }} className="bg-white/90 p-2 rounded-full hover:bg-black hover:text-white text-black shadow-lg transition">
                             {isMapExpanded ? (
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
