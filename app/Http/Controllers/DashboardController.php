@@ -54,19 +54,15 @@ class DashboardController extends Controller
                         'service_type' => $job->service_type,
                         'scheduled_at' => $job->scheduled_at,
                         'problem_description' => $job->problem_description,
-                        // Ensure price is passed if available
                         'price' => $job->price ?? null,
-
-                        // Logic: "Get this Job's Customer -> Get their Location -> Get the Latitude"
                         'latitude'  => $job->customer->location->latitude ?? null,
                         'longitude' => $job->customer->location->longitude ?? null,
-
                         'customer' => $job->customer,
                     ];
                 });
 
             $repairerReviews = \App\Models\Review::where('repairer_id', $user->user_id)
-                ->with('customer') // Get customer name/avatar
+                ->with('customer')
                 ->latest()
                 ->get();
         }
@@ -84,18 +80,18 @@ class DashboardController extends Controller
         if ($nextBooking) {
             $date = \Carbon\Carbon::parse($nextBooking->scheduled_at);
 
-            // 👇 FIX 1: Use Business Name instead of User Name
             $repairerName = $nextBooking->repairerProfile->business_name
                 ?? $nextBooking->repairerProfile->user->name
                 ?? 'Repairer';
 
             $appointment = [
                 'exists' => true,
+                'id' => $nextBooking->id, // Required for chat
                 'day' => $date->format('d'),
                 'month' => $date->format('M'),
                 'time' => $date->format('h:i A'),
                 'type' => $nextBooking->service_type,
-                'repairer' => $repairerName, // ✅ Updated
+                'repairer' => $repairerName,
                 'status' => $nextBooking->status,
             ];
         }
@@ -107,13 +103,11 @@ class DashboardController extends Controller
             ->get()
             ->map(function ($profile) {
                 $mainSkill = $profile->skills->first()->name ?? 'General Repairer';
-
-                // 👇 FIX 2: Use Business Name for Card Title & Avatar
                 $displayName = $profile->business_name ?? $profile->user->name ?? 'Unknown';
 
                 return [
                     'id' => $profile->user->user_id,
-                    'name' => $displayName, // ✅ Updated
+                    'name' => $displayName,
                     'location' => $profile->location ?? $profile->user->location,
                     'role' => $mainSkill,
                     'rating' => $profile->rating,
@@ -138,13 +132,19 @@ class DashboardController extends Controller
             ->orderBy('scheduled_at', 'desc')
             ->get();
 
-        // 2. FETCH CONVERSATIONS
+        // 2. FETCH CONVERSATIONS (Only Confirmed or Completed)
         $conversations = Booking::with(['conversation.messages' => function ($query) {
             $query->latest()->limit(1);
         }, 'customer', 'repairerProfile.user'])
-            ->where('customer_id', $user->user_id)
-            ->orWhereHas('repairerProfile', function ($q) use ($user) {
-                $q->where('user_id', $user->user_id);
+
+            // 👇 THE FIX IS HERE: Filter out 'pending'
+            ->where('status', '!=', 'pending')
+
+            ->where(function ($q) use ($user) {
+                $q->where('customer_id', $user->user_id)
+                    ->orWhereHas('repairerProfile', function ($q2) use ($user) {
+                        $q2->where('user_id', $user->user_id);
+                    });
             })
             ->latest()
             ->get()
@@ -152,7 +152,6 @@ class DashboardController extends Controller
                 $isMeCustomer = $booking->customer_id === $user->user_id;
 
                 if ($isMeCustomer) {
-                    // 👇 FIX 3: Use Business Name in Messages
                     $otherUserName = $booking->repairerProfile->business_name
                         ?? $booking->repairerProfile->user->name
                         ?? 'Repairer';
@@ -166,7 +165,7 @@ class DashboardController extends Controller
                 return [
                     'id' => $chat ? $chat->id : 'new_' . $booking->id,
                     'booking_id' => $booking->id,
-                    'other_user_name' => $otherUserName, // ✅ Updated
+                    'other_user_name' => $otherUserName,
                     'service_type' => $booking->service_type,
                     'last_message_content' => $lastMsg ? $lastMsg->content : 'Booking confirmed. Tap to chat!',
                     'last_message_time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : $booking->created_at->diffForHumans(),
@@ -174,7 +173,6 @@ class DashboardController extends Controller
                 ];
             });
 
-        // 4. Return to React
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
             'userLocation' => $user->location,
@@ -195,14 +193,11 @@ class DashboardController extends Controller
             'isGoogleConnected' => $isGoogleConnected,
             'jobs' => $jobs,
 
-            // --- FIXED SECTION BELOW ---
             'quickAccess' => $quickAccess,
             'topServices' => $topServices,
             'conversations' => $conversations,
             'history' => $history,
 
-            // Use the $appointment variable we calculated at the top. 
-            // If it's null, send ['exists' => false]
             'appointment' => $appointment ? $appointment : ['exists' => false],
             'repairerReviews' => $repairerReviews ?? [],
         ]);
