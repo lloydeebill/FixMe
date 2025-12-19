@@ -391,7 +391,7 @@ const DesktopDashboard = ({
                                                 <span className="font-mono font-bold">{appointment.time}</span>
                                             </div>
 
-                                            {/* 👇 UPDATED BUTTON: CHAT WITH REPAIRER */}
+                                            {/*  UPDATED BUTTON: CHAT WITH REPAIRER */}
                                             <button 
                                                 onClick={() => handleOpenChat(appointment.id)}
                                                 className="w-full bg-[#1b6ed1] text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md flex items-center justify-center gap-2"

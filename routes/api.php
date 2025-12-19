@@ -3,7 +3,7 @@
 use App\Http\Controllers\BookingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\OnboardingController; // ⬅️ Add this import!
+use App\Http\Controllers\OnboardingController; //  Add this import!
 use App\Http\Controllers\ChatController;
 
 
@@ -11,7 +11,7 @@ use App\Http\Controllers\ChatController;
 Route::get('/test', function () {
     return response()->json([
         'status' => 'success',
-        'message' => 'Hello from Laravel Backend 👋'
+        'message' => 'Hello from Laravel Backend'
     ]);
 });
 
@@ -25,7 +25,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
-    // 2. 🚀 ONBOARDING PROFILE SUBMISSION ROUTE 🚀
+    // 2. ONBOARDING PROFILE SUBMISSION ROUTE 
     // The React frontend will POST the form data to this endpoint.
     Route::post('/onboarding/profile', [OnboardingController::class, 'store'])
         ->name('onboarding.store');
@@ -46,5 +46,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings/{id}/complete', [BookingController::class, 'complete']); // For the button
 
 
+    Route::get('/bookings', [BookingController::class, 'index']); // For the list
     Route::post('/bookings/{id}/complete', [BookingController::class, 'complete']); // For the button
 });
