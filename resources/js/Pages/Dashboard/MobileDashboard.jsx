@@ -35,11 +35,12 @@ const MobileDashboard = ({
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans flex flex-col relative pb-24">
+        <div className="min-h-screen bg-[#faf9f6] font-sans flex flex-col relative pb-24">
             
             {/* ================= HEADER SECTION ================= */}
             {activeTab === 'home' && (
-                <div className="bg-gradient-to-br from-[#1b6ed1] to-[#0a4dad] pt-12 pb-10 px-6 rounded-b-[35px] shadow-lg relative overflow-hidden transition-all duration-500">
+                // Changed to Warm Brown Gradient
+                <div className="bg-gradient-to-br from-[#8c6745] to-[#5d4037] pt-12 pb-10 px-6 rounded-b-[35px] shadow-lg relative overflow-hidden transition-all duration-500">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-5 rounded-full -mr-10 -mt-10 blur-2xl pointer-events-none"></div>
 
                     <div className="flex justify-between items-start text-white relative z-10">
@@ -49,10 +50,11 @@ const MobileDashboard = ({
                                     <span className="text-2xl">📅</span>
                                 </div>
                                 <div>
-                                    <p className="text-[10px] uppercase tracking-wider text-blue-200 font-semibold">Upcoming Job</p>
+                                    {/* Changed text color to beige-white */}
+                                    <p className="text-[10px] uppercase tracking-wider text-[#f2e8d9] font-semibold">Upcoming Job</p>
                                     <div className="flex flex-col">
                                         <span className="font-bold text-lg leading-tight text-white">{appointment.type}</span>
-                                        <span className="text-xs text-blue-100">{appointment.day} {appointment.month} • {appointment.time}</span>
+                                        <span className="text-xs text-[#e6d0c0]">{appointment.day} {appointment.month} • {appointment.time}</span>
                                     </div>
                                 </div>
                             </div>
@@ -62,7 +64,7 @@ const MobileDashboard = ({
                                     <span className="text-2xl">👋</span>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-blue-100 opacity-90">Good Morning,</p>
+                                    <p className="text-xs text-[#f2e8d9] opacity-90">Good Morning,</p>
                                     <h1 className="font-bold text-2xl leading-none">{user?.name?.split(' ')[0] || 'Guest'}</h1>
                                 </div>
                             </div>
@@ -81,7 +83,8 @@ const MobileDashboard = ({
 
             {(activeTab === 'chats' || activeTab === 'history' || activeTab === 'profile') && (
                 <div className="bg-white pt-12 pb-4 px-6 shadow-sm sticky top-0 z-30">
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    {/* Changed text color to Dark Brown */}
+                    <h1 className="text-2xl font-bold text-[#5d4037]">
                         {activeTab === 'chats' && 'Messages'}
                         {activeTab === 'history' && 'Job History'}
                         {activeTab === 'profile' && 'My Profile'}
@@ -98,7 +101,7 @@ const MobileDashboard = ({
                     <>
                         {!selectedCategory && (
                             <div className="space-y-6 animate-fade-in-up">
-                                <div className="bg-white p-5 rounded-[25px] shadow-md border border-gray-100">
+                                <div className="bg-white p-5 rounded-[25px] shadow-md border border-[#f2e8d9]">
                                     <div className="grid grid-cols-4 gap-y-6 gap-x-2">
                                         {categories.map((cat, index) => (
                                             <button key={index} onClick={() => onSelectCategory(cat)} className="flex flex-col items-center gap-2 group">
@@ -112,15 +115,15 @@ const MobileDashboard = ({
                                 </div>
                                 
                                 <div>
-                                    <h2 className="text-sm font-bold text-gray-800 mb-3 px-1">Top Rated Near You</h2>
+                                    <h2 className="text-sm font-bold text-[#5d4037] mb-3 px-1">Top Rated Near You</h2>
                                     <div className="flex gap-4 overflow-x-auto pb-4 snap-x hide-scrollbar">
                                         {topServices?.map((service, index) => (
                                             <div key={index} onClick={() => onRepairerSelect(service)} className="min-w-[140px] bg-white p-2 rounded-2xl shadow-sm border border-gray-100 snap-center active:scale-95 transition-transform">
                                                 <div className="h-24 w-full rounded-xl overflow-hidden bg-gray-100 relative mb-2">
                                                     <img src={`https://ui-avatars.com/api/?name=${service.role}&background=random`} className="w-full h-full object-cover" />
-                                                    <div className="absolute top-2 right-2 bg-white/90 px-1.5 rounded-md text-[10px] font-bold shadow-sm">★ {service.rating}</div>
+                                                    <div className="absolute top-2 right-2 bg-white/90 px-1.5 rounded-md text-[10px] font-bold shadow-sm text-[#b86c45]">★ {service.rating}</div>
                                                 </div>
-                                                <h3 className="font-bold text-xs text-gray-900 truncate px-1">{service.role}</h3>
+                                                <h3 className="font-bold text-xs text-[#5d4037] truncate px-1">{service.role}</h3>
                                             </div>
                                         ))}
                                     </div>
@@ -131,10 +134,10 @@ const MobileDashboard = ({
                         {selectedCategory && (
                             <div className="animate-fade-in-right space-y-4">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <button onClick={() => onSelectCategory(null)} className="p-2.5 bg-white border border-gray-200 rounded-full shadow-sm text-gray-700 active:bg-gray-100">
+                                    <button onClick={() => onSelectCategory(null)} className="p-2.5 bg-white border border-gray-200 rounded-full shadow-sm text-[#5d4037] active:bg-gray-100">
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"></path></svg>
                                     </button>
-                                    <h2 className="text-xl font-black text-gray-900 drop-shadow-sm">{selectedCategory.name} Experts</h2>
+                                    <h2 className="text-xl font-black text-[#5d4037] drop-shadow-sm">{selectedCategory.name} Experts</h2>
                                 </div>
 
                                 {repairers.map((repairer) => (
@@ -144,10 +147,11 @@ const MobileDashboard = ({
                                         </div>
                                         <div className="flex-1">
                                             <div className="flex justify-between items-start">
-                                                <h3 className="font-bold text-gray-900">{repairer.repairer_profile.business_name}</h3>
-                                                <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
-                                                    <span className="text-yellow-500 text-xs">★</span>
-                                                    <span className="text-xs font-bold text-gray-700">
+                                                <h3 className="font-bold text-[#5d4037]">{repairer.repairer_profile.business_name}</h3>
+                                                {/* Warm colors for rating */}
+                                                <div className="flex items-center gap-1 bg-[#f2e8d9] px-2 py-1 rounded-lg border border-[#dcb6a2]">
+                                                    <span className="text-[#b86c45] text-xs">★</span>
+                                                    <span className="text-xs font-bold text-[#5d4037]">
                                                         {repairer.repairer_profile.rating || 'New'}
                                                     </span>
                                                 </div>
@@ -166,10 +170,12 @@ const MobileDashboard = ({
                     <div className="animate-fade-in-up space-y-3">
                         {conversations.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">
-                                <div className="bg-blue-50 p-6 rounded-full mb-4"><span className="text-4xl">💬</span></div>
-                                <h3 className="font-bold text-gray-900">No messages yet</h3>
+                                {/* Changed blue bg to beige */}
+                                <div className="bg-[#f2e8d9] p-6 rounded-full mb-4"><span className="text-4xl">💬</span></div>
+                                <h3 className="font-bold text-[#5d4037]">No messages yet</h3>
                                 <p className="text-sm text-gray-500 max-w-[200px]">Book a service to start chatting.</p>
-                                <button onClick={() => setActiveTab('home')} className="mt-6 px-6 py-2 bg-[#1b6ed1] text-white rounded-xl text-sm font-bold shadow-lg shadow-blue-200">Find a Repairer</button>
+                                {/* Button changed to Brown */}
+                                <button onClick={() => setActiveTab('home')} className="mt-6 px-6 py-2 bg-[#5d4037] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#dcb6a2]">Find a Repairer</button>
                             </div>
                         ) : (
                             conversations.map((chat) => (
@@ -180,10 +186,11 @@ const MobileDashboard = ({
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-baseline mb-1">
-                                            <h3 className="font-bold text-gray-900 truncate">{chat.other_user_name}</h3>
+                                            <h3 className="font-bold text-[#5d4037] truncate">{chat.other_user_name}</h3>
                                             <span className="text-[10px] text-gray-400 whitespace-nowrap">{chat.last_message_time || 'Just now'}</span>
                                         </div>
-                                        <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold mb-1 border border-blue-100">
+                                        {/* Tag changed to warm palette */}
+                                        <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#f2e8d9] text-[#5d4037] text-[10px] font-bold mb-1 border border-[#dcb6a2]">
                                             Job #{chat.booking_id} • {chat.service_type || 'Repair'}
                                         </div>
                                         <p className="text-sm text-gray-500 truncate">{chat.last_message_content || 'Chat started'}</p>
@@ -200,7 +207,7 @@ const MobileDashboard = ({
                         {history.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-20 text-center">
                                 <div className="bg-gray-50 p-6 rounded-full mb-4"><span className="text-4xl">📂</span></div>
-                                <h3 className="font-bold text-gray-900">No job history</h3>
+                                <h3 className="font-bold text-[#5d4037]">No job history</h3>
                                 <p className="text-sm text-gray-500 max-w-[200px]">Completed jobs will appear here.</p>
                             </div>
                         ) : (
@@ -208,12 +215,13 @@ const MobileDashboard = ({
                                 <div key={job.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
+                                            {/* Completed badge changed to beige/brown */}
                                             <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-md ${
-                                                job.status === 'completed' ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'
+                                                job.status === 'completed' ? 'bg-[#f2e8d9] text-[#5d4037]' : 'bg-green-100 text-green-700'
                                             }`}>
                                                 {job.status.toUpperCase()}
                                             </span>
-                                            <h3 className="font-bold text-gray-900 mt-2 text-lg">{job.service_type}</h3>
+                                            <h3 className="font-bold text-[#5d4037] mt-2 text-lg">{job.service_type}</h3>
                                         </div>
                                         <p className="text-xs text-gray-400 font-bold uppercase">
                                             {new Date(job.scheduled_at).toLocaleDateString()}
@@ -226,7 +234,8 @@ const MobileDashboard = ({
                                             {!job.review ? (
                                                 <button 
                                                     onClick={() => setReviewingJob(job)}
-                                                    className="w-full py-2 bg-yellow-400 text-black font-bold rounded-xl text-sm shadow-sm active:scale-95 transition-transform"
+                                                    // Review Button changed to Copper
+                                                    className="w-full py-2 bg-[#b86c45] text-white font-bold rounded-xl text-sm shadow-sm active:scale-95 transition-transform"
                                                 >
                                                     ⭐ Leave a Review
                                                 </button>
@@ -251,7 +260,7 @@ const MobileDashboard = ({
                                 <img src={`https://ui-avatars.com/api/?name=${user?.name}&background=random&color=fff&size=128`} className="w-full h-full object-cover" />
                             </div>
                             <div>
-                                <h2 className="text-xl font-black text-gray-900">{user?.name}</h2>
+                                <h2 className="text-xl font-black text-[#5d4037]">{user?.name}</h2>
                                 <p className="text-sm text-gray-500">{user?.email}</p>
                             </div>
                         </div>
@@ -259,10 +268,11 @@ const MobileDashboard = ({
                         <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 space-y-1">
                             <button onClick={onSwitchToWork} className="w-full flex items-center justify-between px-4 py-4 hover:bg-gray-50 rounded-xl transition-colors group">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-lg">⚡</div>
+                                    {/* Icon changed to Beige/Brown */}
+                                    <div className="w-8 h-8 rounded-full bg-[#f2e8d9] text-[#5d4037] flex items-center justify-center text-lg">⚡</div>
                                     <span className="font-bold text-gray-700">Switch to Repairer Mode</span>
                                 </div>
-                                <span className="text-gray-300 group-hover:text-blue-600">→</span>
+                                <span className="text-gray-300 group-hover:text-[#b86c45]">→</span>
                             </button>
                             <div className="h-px bg-gray-50 mx-4"></div>
                             <button onClick={handleLogout} className="w-full flex items-center justify-between px-4 py-4 hover:bg-red-50 rounded-xl transition-colors group">
@@ -321,11 +331,12 @@ const MobileDashboard = ({
     );
 };
 
+// Updated NavButton to use the Brown/Coffee theme for active state
 const NavButton = ({ label, icon, isActive, onClick, badge, badgeCount, customColor }) => (
     <button 
         onClick={onClick}
         className={`flex flex-col items-center gap-1 transition-colors relative ${
-            customColor ? customColor : (isActive ? 'text-[#1b6ed1]' : 'text-gray-400 hover:text-gray-600')
+            customColor ? customColor : (isActive ? 'text-[#5d4037]' : 'text-gray-400 hover:text-gray-600')
         }`}
     >
         <div className="relative">
