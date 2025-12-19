@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useForm, Link } from '@inertiajs/react'; // 👈 Import Link
+import { useForm, Link } from '@inertiajs/react'; //  Import Link
 
 export default function TestChat({ booking, currentUser, initialMessages }) {
     const [messages, setMessages] = useState(initialMessages);

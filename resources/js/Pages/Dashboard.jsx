@@ -44,7 +44,7 @@ export default function Dashboard({
     const [selectedRepairer, setSelectedRepairer] = useState(null);
     const [selectedCategory, setSelectedCategory] = useState(null);
 
-    // ✅ FIXED: Calculated HERE (Before it is used)
+    //  FIXED: Calculated HERE (Before it is used)
     const pendingReviewsCount = useMemo(() => {
         if (!history) return 0;
         return history.filter(job => job.status === 'completed' && !job.review).length;
@@ -124,7 +124,7 @@ export default function Dashboard({
     };
 
     // --- SHARED DATA BUNDLE ---
-    // Now this works because pendingReviewsCount is defined above ⬆️
+    // Now this works because pendingReviewsCount is defined above
     const sharedProps = {
         user,
         appointment,
@@ -137,7 +137,7 @@ export default function Dashboard({
         selectedCategory,
         onSelectCategory: setSelectedCategory,
         
-        pendingReviewsCount, // ✅ Passed safely
+        pendingReviewsCount, // 
         
         repairers: filteredRepairers,
         

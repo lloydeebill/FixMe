@@ -12,11 +12,17 @@ return new class extends Migration
         Schema::create('conversations', function (Blueprint $table) {
             $table->id();
 
+            // If the Booking is deleted, delete the Chat
             $table->foreignId('booking_id')->constrained()->onDelete('cascade');
 
-            // FIX: Point specifically to 'user_id'
-            $table->foreignId('sender_id')->constrained('users', 'user_id');
-            $table->foreignId('receiver_id')->constrained('users', 'user_id');
+            // 👇 FIX: If Sender/Receiver is deleted, delete the Chat automatically
+            $table->foreignId('sender_id')
+                ->constrained('users', 'user_id')
+                ->onDelete('cascade');
+
+            $table->foreignId('receiver_id')
+                ->constrained('users', 'user_id')
+                ->onDelete('cascade');
 
             $table->timestamps();
         });
@@ -25,10 +31,13 @@ return new class extends Migration
         Schema::create('messages', function (Blueprint $table) {
             $table->id();
 
+            // If the Conversation is deleted, delete the Messages
             $table->foreignId('conversation_id')->constrained()->onDelete('cascade');
 
-            // FIX: Point specifically to 'user_id'
-            $table->foreignId('sender_id')->constrained('users', 'user_id');
+            // 👇 FIX: If the Sender user is deleted, delete their messages
+            $table->foreignId('sender_id')
+                ->constrained('users', 'user_id')
+                ->onDelete('cascade');
 
             $table->text('content');
             $table->boolean('is_read')->default(false);
