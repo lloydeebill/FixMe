@@ -5,8 +5,6 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 // --- 1. LEAFLET ICONS & HELPERS ---
-
-// Fix default markers
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -14,7 +12,6 @@ L.Icon.Default.mergeOptions({
     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Emoji Marker Creator
 const createEmojiIcon = (type) => {
     // 📍 for Customer, 🛠️ for Repairer
     const emoji = type === 'customer' ? '📍' : '🛠️'; 
@@ -26,7 +23,6 @@ const createEmojiIcon = (type) => {
     });
 };
 
-// Auto-Fit Map to show both markers
 function FitBounds({ markers }) {
     const map = useMap();
     useEffect(() => {
@@ -34,14 +30,13 @@ function FitBounds({ markers }) {
             const validMarkers = markers.filter(m => m[0] !== 0 && !isNaN(m[0]));
             if (validMarkers.length > 0) {
                 const bounds = L.latLngBounds(validMarkers);
-                map.fitBounds(bounds, { padding: [80, 80] }); // Padding to keep markers away from edges
+                map.fitBounds(bounds, { padding: [80, 80] }); 
             }
         }
     }, [markers, map]);
     return null;
 }
 
-// Fix Map Rendering Issues
 function MapInvalidator() {
     const map = useMap();
     useEffect(() => {
@@ -50,7 +45,6 @@ function MapInvalidator() {
     return null;
 }
 
-// Distance Calculation (Haversine Formula)
 function getDistance(lat1, lon1, lat2, lon2) {
     if (!lat1 || !lon1 || !lat2 || !lon2) return "N/A";
     const R = 6371; // km
@@ -109,7 +103,6 @@ export default function RepairerMobile({
     const handleApproveAndClose = (id) => { onApprove(id); setSelectedJob(null); };
     const handleRejectAndClose = (id) => { onReject(id); setSelectedJob(null); };
     
-    // 🆕 COMPLETE HANDLER (This was missing logic inside the modal)
     const handleCompleteAndClose = (id) => {
         if(confirm("Are you sure this job is finished?")) {
             onComplete(id);
@@ -121,25 +114,18 @@ export default function RepairerMobile({
 
     // --- 3. SUB-COMPONENTS ---
 
-    // 🆕 FULL SCREEN JOB DETAILS MODAL
+    // FULL SCREEN JOB DETAILS MODAL
     const JobDetailsModal = ({ job, onClose }) => {
         if (!job) return null;
 
-        // A. COORDINATES
-        // Repairer (You) - Default to Davao if missing
         const repairerLat = parseFloat(profile?.location?.latitude || user?.location?.latitude || 7.1907);
         const repairerLng = parseFloat(profile?.location?.longitude || user?.location?.longitude || 125.4553);
-
-        // Customer (Target)
         const customerLat = parseFloat(job.latitude);
         const customerLng = parseFloat(job.longitude);
         const hasCustomerLocation = !isNaN(customerLat) && !isNaN(customerLng);
-
-        // Map Center & Distance
         const mapCenter = hasCustomerLocation ? [customerLat, customerLng] : [repairerLat, repairerLng];
         const distance = hasCustomerLocation ? getDistance(repairerLat, repairerLng, customerLat, customerLng) : "Unknown";
 
-        // Google Maps Link
         const openGoogleMaps = () => {
             if (!hasCustomerLocation) return alert("No customer location available.");
             window.open(`https://www.google.com/maps/dir/?api=1&origin=${repairerLat},${repairerLng}&destination=${customerLat},${customerLng}&travelmode=driving`, '_blank');
@@ -147,14 +133,8 @@ export default function RepairerMobile({
 
         return (
             <div className="fixed inset-0 z-[9999] sm:flex sm:items-center sm:justify-center">
-                
-                {/* Backdrop (Desktop only) */}
                 <div onClick={onClose} className="hidden sm:block absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
-                
-                {/* Modal Container - Full Screen on Mobile */}
                 <div className="bg-white w-full h-full sm:h-auto sm:w-[500px] sm:max-h-[90vh] sm:rounded-[30px] relative z-10 shadow-2xl flex flex-col overflow-hidden animate-slide-up">
-                    
-                    {/* 1. HEADER (Floating Close Button) */}
                     <div className="absolute top-4 right-4 z-[500]">
                         <button onClick={onClose} className="bg-white/90 p-2 rounded-full text-black shadow-lg border border-gray-100 active:scale-95 transition-transform">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -163,8 +143,7 @@ export default function RepairerMobile({
                         </button>
                     </div>
 
-                    {/* 2. MAP AREA (Top Half) */}
-                    <div className="relative w-full h-1/2 bg-gray-100 shrink-0">
+                    <div className="relative w-full h-1/2 bg-[#f2e8d9] shrink-0">
                         <MapContainer 
                             key={job.id}
                             center={mapCenter} 
@@ -173,74 +152,66 @@ export default function RepairerMobile({
                             style={{ height: '100%', width: '100%' }}
                         >
                             <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
-                            
-                            {/* You (Repairer) */}
                             <Marker position={[repairerLat, repairerLng]} icon={createEmojiIcon('repairer')}>
                                 <Popup><strong>You</strong></Popup>
                             </Marker>
-
-                            {/* Customer */}
                             {hasCustomerLocation && (
                                 <Marker position={[customerLat, customerLng]} icon={createEmojiIcon('customer')}>
                                     <Popup><strong>Customer</strong><br/>{distance} km away</Popup>
                                 </Marker>
                             )}
-
                             {hasCustomerLocation && <FitBounds markers={[[repairerLat, repairerLng], [customerLat, customerLng]]} />}
                             <MapInvalidator />
                         </MapContainer>
 
-                        {/* Map Overlay Info */}
                         <div className="absolute bottom-4 left-4 z-[400] bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl shadow-lg border border-white/50">
                              <div className="flex items-center gap-2">
                                 <span className="text-xl">🚗</span>
                                 <div>
                                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Est. Distance</p>
-                                    <p className="font-black text-gray-900 leading-none">{distance} km away</p>
+                                    <p className="font-black text-[#5d4037] leading-none">{distance} km away</p>
                                 </div>
                              </div>
                         </div>
 
-                        {/* Google Maps Button */}
                         {hasCustomerLocation && (
                             <button 
                                 onClick={openGoogleMaps}
-                                className="absolute -bottom-6 right-6 z-[600] bg-blue-600 text-white h-14 w-14 rounded-full shadow-xl flex items-center justify-center text-2xl hover:bg-blue-700 active:scale-95 transition-transform border-4 border-white"
+                                // Changed button to Brown
+                                className="absolute -bottom-6 right-6 z-[600] bg-[#5d4037] text-white h-14 w-14 rounded-full shadow-xl flex items-center justify-center text-2xl hover:bg-[#8c6745] active:scale-95 transition-transform border-4 border-white"
                             >
                                 🗺️
                             </button>
                         )}
                     </div>
 
-                    {/* 3. DETAILS BODY (Scrollable) */}
                     <div className="flex-1 overflow-y-auto bg-white relative pt-8 px-6 pb-32">
                         <div className="mb-6">
                             <span className={`inline-block px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider mb-2 ${
-                                job.status === 'pending' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'
+                                // Status Colors: Pending (Orange/Warm), Completed (Beige), Confirmed (Green/Warm)
+                                job.status === 'pending' ? 'bg-orange-50 text-orange-700' : 'bg-[#f2e8d9] text-[#5d4037]'
                             }`}>
                                 {job.status === 'pending' ? 'New Request' : job.status}
                             </span>
-                            <h2 className="text-3xl font-black text-gray-900 leading-none">{job.service_type}</h2>
+                            <h2 className="text-3xl font-black text-[#5d4037] leading-none">{job.service_type}</h2>
                         </div>
 
                         <div className="space-y-6">
-                            {/* Customer Row */}
                             <div className="flex items-center gap-4">
-                                <div className="h-14 w-14 bg-gray-50 rounded-full flex items-center justify-center text-2xl font-black text-gray-400 border border-gray-100">
+                                <div className="h-14 w-14 bg-[#faf9f6] rounded-full flex items-center justify-center text-2xl font-black text-[#dcb6a2] border border-[#f2e8d9]">
                                     {job.customer?.name.charAt(0)}
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-gray-400 font-bold uppercase">Customer Name</p>
-                                    <p className="font-bold text-gray-900 text-xl">{job.customer?.name}</p>
+                                    <p className="font-bold text-[#5d4037] text-xl">{job.customer?.name}</p>
                                 </div>
                             </div>
 
-                            {/* Date Row */}
                             <div className="flex items-center gap-4">
-                                <div className="h-14 w-14 flex items-center justify-center text-2xl bg-orange-50 rounded-2xl">📅</div>
+                                <div className="h-14 w-14 flex items-center justify-center text-2xl bg-[#f2e8d9] rounded-2xl">📅</div>
                                 <div>
                                     <p className="text-[10px] text-gray-400 font-bold uppercase">Schedule</p>
-                                    <p className="font-bold text-gray-900 text-lg">
+                                    <p className="font-bold text-[#5d4037] text-lg">
                                         {new Date(job.scheduled_at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} 
                                     </p>
                                     <p className="text-sm text-gray-500 font-medium">
@@ -249,8 +220,7 @@ export default function RepairerMobile({
                                 </div>
                             </div>
 
-                            {/* Description Box */}
-                            <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                            <div className="bg-[#faf9f6] p-5 rounded-2xl border border-[#f2e8d9]">
                                 <p className="text-[10px] text-gray-400 font-bold uppercase mb-2">Issue Description</p>
                                 <p className="text-gray-700 font-medium leading-relaxed">
                                     "{job.problem_description || 'No description provided.'}"
@@ -259,9 +229,7 @@ export default function RepairerMobile({
                         </div>
                     </div>
 
-                    {/* 4. STICKY FOOTER ACTIONS */}
-                    {/* This div stays at the bottom of the screen */}
-                    <div className="absolute bottom-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md border-t border-gray-100 z-50">
+                    <div className="absolute bottom-0 left-0 w-full p-4 bg-white/80 backdrop-blur-md border-t border-[#f2e8d9] z-50">
                         {job.status === 'pending' ? (
                             <div className="grid grid-cols-2 gap-3">
                                 <button 
@@ -272,23 +240,25 @@ export default function RepairerMobile({
                                 </button>
                                 <button 
                                     onClick={() => handleApproveAndClose(job.id)} 
-                                    className="py-4 rounded-xl bg-black text-white font-bold text-lg shadow-xl active:scale-95 transition-transform"
+                                    // Accept Button -> Dark Brown
+                                    className="py-4 rounded-xl bg-[#5d4037] text-white font-bold text-lg shadow-xl active:scale-95 transition-transform"
                                 >
                                     Accept Job
                                 </button>
                             </div>
                         ) : job.status === 'confirmed' ? (
-                            // 🆕 THIS IS THE PART FOR CONFIRMED JOBS
                             <div className="grid grid-cols-2 gap-3">
                                  <button 
                                     onClick={() => handleOpenChat(job.id)}
-                                    className="py-4 rounded-xl bg-blue-50 text-blue-600 font-bold text-lg border border-blue-100"
+                                    // Chat Button -> Beige
+                                    className="py-4 rounded-xl bg-[#f2e8d9] text-[#5d4037] font-bold text-lg border border-[#dcb6a2]"
                                 >
                                     Chat
                                 </button>
                                 <button 
                                     onClick={() => handleCompleteAndClose(job.id)}
-                                    className="py-4 rounded-xl bg-green-600 text-white font-bold text-lg shadow-xl active:scale-95 transition-transform"
+                                    // Complete Button -> Copper/Greenish
+                                    className="py-4 rounded-xl bg-[#b86c45] text-white font-bold text-lg shadow-xl active:scale-95 transition-transform"
                                 >
                                     Complete Job
                                 </button>
@@ -310,33 +280,32 @@ export default function RepairerMobile({
 
     // 2. UPDATED JOB CARD
     const JobCard = ({ job }) => (
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-4 animate-fade-in-up relative overflow-hidden">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-[#f2e8d9] mb-4 animate-fade-in-up relative overflow-hidden">
             <div className="flex justify-between items-start mb-3">
                 <div>
-                    <h3 className="font-bold text-gray-900 text-lg">{job.service_type}</h3>
+                    <h3 className="font-bold text-[#5d4037] text-lg">{job.service_type}</h3>
                     <p className="text-xs text-gray-400 font-bold uppercase mt-1">
                         {new Date(job.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                     </p>
                 </div>
                 <div className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                    job.status === 'pending' ? 'bg-blue-50 text-blue-700' :
-                    job.status === 'confirmed' ? 'bg-green-50 text-green-700' :
+                    job.status === 'pending' ? 'bg-orange-50 text-orange-700' :
+                    job.status === 'confirmed' ? 'bg-[#f2e8d9] text-[#5d4037]' :
                     'bg-gray-100 text-gray-600'
                 }`}>
                     {job.status}
                 </div>
             </div>
             
-            <p className="text-sm text-gray-600 mb-4 line-clamp-2 pl-3 border-l-2 border-gray-200">
+            <p className="text-sm text-gray-600 mb-4 line-clamp-2 pl-3 border-l-2 border-[#dcb6a2]">
                 {job.problem_description || 'No description.'}
             </p>
             
-            {/* Action Area */}
-            <div className="pt-3 border-t border-gray-50 flex gap-2">
-                 {/* Main Action Button */}
+            <div className="pt-3 border-t border-[#faf9f6] flex gap-2">
                  <button 
                     onClick={() => setSelectedJob(job)} 
-                    className="flex-1 py-3 bg-black text-white font-bold text-sm rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                    // View Button -> Dark Brown
+                    className="flex-1 py-3 bg-[#5d4037] text-white font-bold text-sm rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-95 transition-transform"
                 >
                     <span>View Details</span>
                     <span>→</span>
@@ -363,8 +332,11 @@ export default function RepairerMobile({
 
         return (
             <div className="px-6 pb-24 pt-4 animate-fade-in-up">
-                <MenuItem title="Pending" sub="Needs Approval" count={pendingCount} onClick={() => handleOpenJobList('pending')} color="bg-yellow-50 text-yellow-900 border-yellow-100" />
-                <MenuItem title="Active Jobs" sub="Scheduled" count={activeCount} onClick={() => handleOpenJobList('confirmed')} color="bg-green-50 text-green-900 border-green-100" />
+                {/* Pending -> Warm Orange tone */}
+                <MenuItem title="Pending" sub="Needs Approval" count={pendingCount} onClick={() => handleOpenJobList('pending')} color="bg-orange-50 text-orange-900 border-orange-100" />
+                {/* Active -> Beige/Brown tone */}
+                <MenuItem title="Active Jobs" sub="Scheduled" count={activeCount} onClick={() => handleOpenJobList('confirmed')} color="bg-[#f2e8d9] text-[#5d4037] border-[#dcb6a2]" />
+                {/* History -> Gray tone */}
                 <MenuItem title="History" sub="Completed" count={completedCount} onClick={() => handleOpenJobList('completed')} color="bg-gray-50 text-gray-900 border-gray-100" />
             </div>
         );
@@ -379,8 +351,8 @@ export default function RepairerMobile({
         return (
             <div className="px-4 pb-24 pt-2 animate-fade-in-right">
                 <div className="flex items-center gap-4 mb-6">
-                    <button onClick={() => setJobsSubView('menu')} className="h-10 w-10 bg-white border border-gray-200 rounded-full shadow-sm active:bg-gray-100 flex items-center justify-center font-bold text-lg">←</button>
-                    <h2 className="text-2xl font-black text-gray-900">{title}</h2>
+                    <button onClick={() => setJobsSubView('menu')} className="h-10 w-10 bg-white border border-gray-200 rounded-full shadow-sm active:bg-gray-100 flex items-center justify-center font-bold text-lg text-[#5d4037]">←</button>
+                    <h2 className="text-2xl font-black text-[#5d4037]">{title}</h2>
                 </div>
                 {filteredJobs.length === 0 ? (
                     <div className="text-center py-20 opacity-50">
@@ -394,31 +366,30 @@ export default function RepairerMobile({
         );
     };
 
-    // ... Other views (Chats, Schedule) ...
     const ChatsView = () => (
         <div className="px-4 pb-24 pt-20 text-center text-gray-400 font-bold">
             {conversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="bg-gray-50 p-6 rounded-full mb-4"><span className="text-4xl">💬</span></div>
-                    <h3 className="font-bold text-gray-900">No active chats</h3>
+                    <div className="bg-[#f2e8d9] p-6 rounded-full mb-4"><span className="text-4xl">💬</span></div>
+                    <h3 className="font-bold text-[#5d4037]">No active chats</h3>
                     <p className="text-sm text-gray-500 max-w-[200px]">Messages from customers will appear here.</p>
                 </div>
             ) : (
                 conversations.map(chat => (
-                    <div key={chat.id} onClick={() => handleOpenChat(chat.booking_id)} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 active:scale-95 transition-transform mb-3 relative">
+                    <div key={chat.id} onClick={() => handleOpenChat(chat.booking_id)} className="bg-white p-4 rounded-2xl shadow-sm border border-[#f2e8d9] flex items-center gap-4 active:scale-95 transition-transform mb-3 relative">
                         {chat.unread_count > 0 && <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></div>}
                         
-                        <div className="h-14 w-14 bg-gray-100 rounded-full overflow-hidden border border-gray-100 flex-shrink-0">
+                        <div className="h-14 w-14 bg-[#faf9f6] rounded-full overflow-hidden border border-[#f2e8d9] flex-shrink-0">
                             <img src={`https://ui-avatars.com/api/?name=${chat.other_user_name}&background=random`} className="h-full w-full object-cover" />
                         </div>
 
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 text-left">
                             <div className="flex justify-between items-baseline mb-1">
-                                <h3 className="font-bold text-gray-900 truncate">{chat.other_user_name}</h3>
+                                <h3 className="font-bold text-[#5d4037] truncate">{chat.other_user_name}</h3>
                                 <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{chat.last_message_time || 'Just now'}</span>
                             </div>
                             
-                            <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[10px] font-bold mb-1.5 border border-blue-100 max-w-full truncate">
+                            <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#f2e8d9] text-[#5d4037] text-[10px] font-bold mb-1.5 border border-[#dcb6a2] max-w-full truncate">
                                 Job #{chat.booking_id} • {chat.service_type || 'Service'}
                             </div>
 
@@ -434,24 +405,26 @@ export default function RepairerMobile({
 
     const ScheduleView = () => (
         <div className="px-4 pb-24 pt-4">
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                <h3 className="font-bold text-lg mb-4">Weekly Availability</h3>
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-[#f2e8d9]">
+                <h3 className="font-bold text-lg mb-4 text-[#5d4037]">Weekly Availability</h3>
                 {data.schedule.map((day, index) => (
-                    <div key={day.day_of_week} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                    <div key={day.day_of_week} className="flex items-center justify-between py-3 border-b border-[#faf9f6] last:border-0">
                         <div className="flex items-center gap-3">
-                            <input type="checkbox" checked={day.is_active} onChange={(e) => updateDay(index, 'is_active', e.target.checked)} className="w-5 h-5 rounded text-black focus:ring-black border-gray-300"/>
-                            <span className={`font-bold ${day.is_active ? 'text-black' : 'text-gray-300'}`}>{DAYS[day.day_of_week]}</span>
+                            {/* Checkbox color -> Brown/Black */}
+                            <input type="checkbox" checked={day.is_active} onChange={(e) => updateDay(index, 'is_active', e.target.checked)} className="w-5 h-5 rounded text-[#5d4037] focus:ring-[#5d4037] border-gray-300"/>
+                            <span className={`font-bold ${day.is_active ? 'text-[#5d4037]' : 'text-gray-300'}`}>{DAYS[day.day_of_week]}</span>
                         </div>
                         {day.is_active && (
                             <div className="flex items-center gap-1">
-                                <input type="time" value={day.start_time} onChange={(e) => updateDay(index, 'start_time', e.target.value)} className="w-20 text-xs p-1 border rounded bg-gray-50"/>
+                                <input type="time" value={day.start_time} onChange={(e) => updateDay(index, 'start_time', e.target.value)} className="w-20 text-xs p-1 border rounded bg-[#faf9f6]"/>
                                 <span className="text-gray-300">-</span>
-                                <input type="time" value={day.end_time} onChange={(e) => updateDay(index, 'end_time', e.target.value)} className="w-20 text-xs p-1 border rounded bg-gray-50"/>
+                                <input type="time" value={day.end_time} onChange={(e) => updateDay(index, 'end_time', e.target.value)} className="w-20 text-xs p-1 border rounded bg-[#faf9f6]"/>
                             </div>
                         )}
                     </div>
                 ))}
-                <button onClick={saveSchedule} disabled={processing} className="w-full mt-4 bg-black text-white py-3 rounded-xl font-bold">
+                {/* Save Button -> Dark Brown */}
+                <button onClick={saveSchedule} disabled={processing} className="w-full mt-4 bg-[#5d4037] text-white py-3 rounded-xl font-bold hover:bg-[#8c6745] transition-colors">
                     {processing ? 'Saving...' : 'Update Schedule'}
                 </button>
             </div>
@@ -460,18 +433,19 @@ export default function RepairerMobile({
 
     // --- MAIN RENDER ---
     return (
-        <div className="min-h-screen bg-gray-50 font-sans">
-            {/* 🆕 MODAL RENDERED HERE */}
+        <div className="min-h-screen bg-[#faf9f6] font-sans">
             <JobDetailsModal job={selectedJob} onClose={() => setSelectedJob(null)} />
 
             {/* TOP HEADER */}
             <header className="bg-white px-6 pt-12 pb-4 sticky top-0 z-10 shadow-sm flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-black tracking-tight">FixMe<span className="text-blue-600">.</span></h1>
+                    {/* Logo Colors */}
+                    <h1 className="text-2xl font-black tracking-tight text-[#5d4037]">FixMe<span className="text-[#b86c45]">.</span></h1>
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">
                         {profile?.business_name || user.name}
                     </p>
                 </div>
+                {/* Online Status -> Green stays green (functional color), but background fits theme */}
                 <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border ${
                     isOnSchedule ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'
                 }`}>
@@ -487,7 +461,8 @@ export default function RepairerMobile({
                 
                 {activeTab === 'profile' && (
                     <div className="px-6 pt-10 text-center">
-                        <button onClick={onSwitchToCustomer} className="w-full py-4 bg-white border border-gray-200 font-bold rounded-2xl mb-4 shadow-sm text-blue-600">Switch to Customer</button>
+                        {/* Switch Button -> Beige/Brown */}
+                        <button onClick={onSwitchToCustomer} className="w-full py-4 bg-white border border-[#dcb6a2] font-bold rounded-2xl mb-4 shadow-sm text-[#b86c45]">Switch to Customer</button>
                         <button onClick={onLogout} className="w-full py-4 bg-red-50 text-red-600 font-bold rounded-2xl">Log Out</button>
                     </div>
                 )}
@@ -504,10 +479,11 @@ export default function RepairerMobile({
     );
 }
 
+// Updated NavButton to use the Brown theme
 const NavButton = ({ icon, label, isActive, onClick, badge }) => (
     <button onClick={onClick} className="flex flex-col items-center gap-1 relative w-16">
         <span className={`text-xl transition-transform ${isActive ? 'scale-110' : 'opacity-50 grayscale'}`}>{icon}</span>
-        <span className={`text-[10px] font-bold ${isActive ? 'text-black' : 'text-gray-400'}`}>{label}</span>
+        <span className={`text-[10px] font-bold ${isActive ? 'text-[#5d4037]' : 'text-gray-400'}`}>{label}</span>
         {badge > 0 && (
             <span className="absolute -top-1 right-2 bg-red-500 text-white text-[10px] w-4 h-4 flex items-center justify-center rounded-full">
                 {badge}
