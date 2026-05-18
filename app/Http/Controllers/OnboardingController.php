@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Models\Skill; // 👈 Import Skill model
+use App\Models\Skill;
 
 class OnboardingController extends Controller
 {
@@ -51,8 +51,6 @@ class OnboardingController extends Controller
         if ($request->boolean('is_repairer')) {
             $rules['business_name'] = 'required|string|max:255';
             $rules['bio'] = 'nullable|string|max:500';
-
-            // 👇 New Skills Validation
             $rules['skills'] = 'required|array|min:1';
             $rules['skills.*'] = 'exists:skills,id';
         }
@@ -89,7 +87,7 @@ class OnboardingController extends Controller
                         'bio'           => $validated['bio'] ?? 'New Repairer',
                         'rating'        => 0,
                         'clients_helped' => 0,
-                        // ❌ Removed focus_area
+
                     ]
                 );
 
@@ -101,7 +99,6 @@ class OnboardingController extends Controller
             }
         });
 
-        // 🛑 CRITICAL FIX: Reload the user so the session knows they are now a repairer
         Auth::user()->refresh();
 
         return Inertia::location(route('dashboard'));

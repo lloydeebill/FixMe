@@ -9,7 +9,6 @@ class Review extends Model
 {
     use HasFactory;
 
-    // 👇 THIS IS THE MISSING PART
     protected $fillable = [
         'booking_id',
         'customer_id',

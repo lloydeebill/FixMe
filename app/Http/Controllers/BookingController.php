@@ -36,8 +36,6 @@ class BookingController extends Controller
 
         $active  = (clone $query)->active()->with(['repairerProfile', 'customer'])->get();
 
-        // 👇 THIS IS THE CRITICAL LINE 👇
-        // You must include 'review' here, otherwise the frontend thinks review is NULL for everyone.
         $history = (clone $query)->completed()
             ->with(['repairerProfile', 'customer', 'review'])
             ->get();
@@ -111,7 +109,6 @@ class BookingController extends Controller
     }
 
     // 2. APPROVE (Repairer Accepts & Syncs)
-    // 2. APPROVE (Repairer Accepts & Syncs)
     public function approve(Request $request, $id)
     {
         $booking = Booking::findOrFail($id);
@@ -128,7 +125,6 @@ class BookingController extends Controller
         // 1. Update Status
         $booking->update(['status' => 'confirmed']);
 
-        // 👇 FIX: CREATE THE CONVERSATION FIRST!
         $conversation = Conversation::firstOrCreate(
             ['booking_id' => $booking->id],
             [
@@ -137,7 +133,6 @@ class BookingController extends Controller
             ]
         );
 
-        // 👇 NOW you can use $conversation->id
         $formattedDate = \Carbon\Carbon::parse($booking->scheduled_at)->format('M d, h:i A');
 
         Message::create([
@@ -244,17 +239,15 @@ class BookingController extends Controller
                 : \Carbon\Carbon::parse($booking->scheduled_at)->addHour();
             $endStr = $endTime->format('Y-m-d\TH:i:s');
 
-            // 🛑 FIX: Handle Location Object vs String
-            // We migrated to a 'locations' table, so $customer->location is an OBJECT now.
-            // Google expects a STRING.
+
             $locationString = 'Customer Location';
             if ($customer->location) {
-                $locationString = $customer->location->address; // 👈 Extract the address string
+                $locationString = $customer->location->address;
             }
 
             $event = new Event([
                 'summary' => 'Repair Job: ' . $booking->service_type,
-                'location' => $locationString, // 👈 Passing the string, not the object
+                'location' => $locationString,
                 'description' => "Customer: {$customer->name}\nProblem: {$booking->problem_description}",
                 'start' => [
                     'dateTime' => $startStr,
@@ -276,8 +269,7 @@ class BookingController extends Controller
                 ],
             ]);
 
-            // 🛑 CRITICAL FIX: 'sendUpdates' => 'all'
-            // This forces Google to send the email invite to the customer
+
             $newEvent = $service->events->insert('primary', $event, ['sendUpdates' => 'all']);
 
             return $newEvent->id;
