@@ -88,7 +88,6 @@ const GlobalStyles = () => (
         /* Hero / Header layout elements */
         .hero-mobile {
             border-radius: 0 0 32px 32px;
-            /* CHANGED: Increased bottom padding from 36px to 52px */
             padding: 30px 24px 20px; 
             color: white;
             position: relative;
@@ -124,26 +123,68 @@ const GlobalStyles = () => (
             font-size: 12px;
         }
 
-        /* ULTRA COMPACT CATEGORY TILES */
+        /* ✨ AI SMART UTILITY HUB GRID */
+        .ai-grid-btn {
+            background: rgba(255, 252, 245, 0.65);
+            backdrop-filter: var(--blur-sm);
+            -webkit-backdrop-filter: var(--blur-sm);
+            border: 1px solid rgba(176, 125, 74, 0.35);
+            border-radius: 20px;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 14px rgba(59,35,20,0.05), inset 0 1px 0 rgba(255,255,255,0.6);
+            transition: transform 0.2s cubic-bezier(.25,1,.32,1), background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .ai-grid-btn::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(200,169,122,0.15) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .ai-grid-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 248, 238, 0.90);
+            box-shadow: 0 2px 6px rgba(59,35,20,0.03);
+        }
+        .ai-icon-circle {
+            width: 44px; height: 44px;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px;
+            background: linear-gradient(135deg, rgba(245,237,224,0.90) 0%, rgba(210,180,140,0.40) 100%);
+            border: 1px solid rgba(255,255,255,0.80);
+            box-shadow: 0 2px 8px rgba(176,125,74,0.10);
+        }
+
+        /* 📂 BEAUTIFIED 2x2 CATEGORY TILES */
         .cat-tile {
-            border-radius: 8px;                       /* Reduced from 12px for a tighter box */
-            padding: 6px 2px 4px;                     /* Shaved off vertical and horizontal padding */
-            display: flex; flex-direction: column; align-items: center; gap: 2px; /* Tighter gap */
+            border-radius: 18px;                       
+            padding: 14px 10px;                     
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 8px; 
             background: rgba(255,255,255,0.45);
-            border: 1px solid rgba(255,255,255,0.6);
-            box-shadow: 0 2px 8px rgba(59,35,20,0.03); /* Scaled down the shadow spread */
-            transition: transform 0.2s ease, background-color 0.2s ease;
+            border: 1px solid rgba(255,255,255,0.7);
+            box-shadow: 0 4px 12px rgba(59,35,20,0.04); 
+            transition: transform 0.2s cubic-bezier(.25,1,.32,1), background-color 0.2s ease;
         }
         .cat-tile:active {
-            transform: scale(0.94);
+            transform: scale(0.96);
             background: rgba(255,255,255,0.8);
         }
         .cat-icon-wrap {
-            width: 24px; height: 24px;                /* Reduced from 30x30px */
-            border-radius: 6px;                       /* Adjusted inner radius to match */
+            width: 38px; height: 38px;                
+            border-radius: 12px;                       
             display: flex; align-items: center; justify-content: center;
-            font-size: 12px;                          /* Smaller emoji/icon size */
+            font-size: 18px;                          
             position: relative;
+            box-shadow: 0 2px 6px rgba(59,35,20,0.04);
         }
         .cat-icon-wrap::after {
             content: ''; position: absolute; inset: 0; border-radius: inherit;
@@ -321,80 +362,94 @@ const MobileDashboard = ({
                            {!selectedCategory && (
                                 <div className="space-y-6 animate-slide-up">
                                     
-                                    {/* NEW: Search Bar */}
-                                    <div className="px-1 relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm">🔍</span>
-                                        <input 
-                                            type="text" 
-                                            placeholder="What do you need help with?" 
-                                            className="w-full bg-white/60 backdrop-blur-md border border-white/80 rounded-[18px] py-3.5 pl-10 pr-4 text-xs font-medium text-[#3b2314] placeholder-gray-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#c8a97a]/50 transition-all"
-                                        />
-                                    </div>
-
-                                    {/* Categories Swipeable Pager (Pages of 4) */}
-                                    <div className="glass rounded-[24px] p-3 border border-white/70 shadow-md">
-                                        <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-6">
-                                            {Array.from({ length: Math.ceil(categories.length / 4) }).map((_, pageIndex) => {
-                                                const pageCategories = categories.slice(pageIndex * 4, (pageIndex + 1) * 4);
-                                                
-                                                return (
-                                                    <div key={pageIndex} className="min-w-full snap-center grid grid-cols-4 gap-x-2">
-                                                        {pageCategories.map((cat, index) => {
-                                                            const globalIndex = (pageIndex * 4) + index;
-                                                            const token = getCatStyle(globalIndex);
-                                                            
-                                                            return (
-                                                                <button key={globalIndex} onClick={() => onSelectCategory(cat)} className="cat-tile">
-                                                                    <div className="cat-icon-wrap" style={{ backgroundColor: token.bg }}>
-                                                                        <span className="relative z-10">{cat.icon || token.emoji}</span>
-                                                                    </div>
-                                                                    <span className="text-[9px] font-bold text-gray-700 text-center leading-tight block w-full px-0.5 truncate">
-                                                                        {cat.name}
-                                                                    </span>
-                                                                </button>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                        
-                                        {/* Optional: Little dots to indicate swipeable pages */}
-                                        {categories.length > 4 && (
-                                            <div className="flex justify-center gap-1.5 mt-3 mb-1">
-                                                {Array.from({ length: Math.ceil(categories.length / 4) }).map((_, i) => (
-                                                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#3b2314]/20"></div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                    
-                                    {/* Top Rated Near You */}
+                                    {/* Categories Section (Fixed 2x2 Grid Paging) */}
                                     <div className="space-y-3">
                                         <div className="px-1">
                                             <div className="section-title">
-                                                <span className="section-badge">⭐</span>
-                                                Top Rated Near You
+                                                <span className="section-badge">📂</span>
+                                                Categories
                                             </div>
                                         </div>
-                                        <div className="flex gap-4 overflow-x-auto pb-2 snap-x hide-scrollbar">
-                                            {topServices?.map((service, index) => (
-                                                <div key={index} onClick={() => onRepairerSelect(service)} className="min-w-[145px] bg-white/50 backdrop-blur-sm p-2.5 rounded-2xl shadow-sm border border-white/80 snap-center active:scale-95 transition-transform flex flex-col justify-between">
-                                                    <div>
-                                                        <div className="h-22 w-full rounded-xl overflow-hidden bg-gray-100 relative mb-2 border border-black/5">
-                                                            <img src={service.image || `https://ui-avatars.com/api/?name=${service.role}&background=ebdcb9&color=5d3a1a&bold=true`} className="w-full h-full object-cover" alt="" />
-                                                            <div className="absolute top-1 right-1 shadow-sm">
-                                                                <div className="star-badge">★ {service.rating}</div>
-                                                            </div>
+
+                                        {/* Categories Swipeable Pager (Pages of 4 structured in 2x2 Grid) */}
+                                        <div className="glass rounded-[28px] p-3.5 border border-white/70 shadow-md">
+                                            <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-6">
+                                                {Array.from({ length: Math.ceil(categories.length / 4) }).map((_, pageIndex) => {
+                                                    const pageCategories = categories.slice(pageIndex * 4, (pageIndex + 1) * 4);
+                                                    
+                                                    return (
+                                                        <div key={pageIndex} className="min-w-full snap-center grid grid-cols-2 gap-3">
+                                                            {pageCategories.map((cat, index) => {
+                                                                const globalIndex = (pageIndex * 4) + index;
+                                                                const token = getCatStyle(globalIndex);
+                                                                
+                                                                return (
+                                                                    <button key={globalIndex} onClick={() => onSelectCategory(cat)} className="cat-tile">
+                                                                        <div className="cat-icon-wrap" style={{ backgroundColor: token.bg }}>
+                                                                            <span className="relative z-10">{cat.icon || token.emoji}</span>
+                                                                        </div>
+                                                                        <span className="text-[11px] font-bold text-[#3b2314] text-center leading-tight block w-full px-1 truncate">
+                                                                            {cat.name}
+                                                                        </span>
+                                                                    </button>
+                                                                );
+                                                            })}
                                                         </div>
-                                                        <h3 className="font-bold text-xs text-[#3b2314] truncate px-0.5">{service.role}</h3>
-                                                        <p className="text-[10px] text-gray-500 truncate px-0.5 mt-0.5">{service.name || 'Professional'}</p>
-                                                    </div>
-                                                    <span className="text-[11px] font-bold text-[#b07d4a] px-0.5 pt-2 self-start">Book Now →</span>
+                                                    );
+                                                })}
+                                            </div>
+                                            
+                                            {/* Page Indicator Dots */}
+                                            {categories.length > 4 && (
+                                                <div className="flex justify-center gap-1.5 mt-3.5 mb-1">
+                                                    {Array.from({ length: Math.ceil(categories.length / 4) }).map((_, i) => (
+                                                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#3b2314]/20"></div>
+                                                    ))}
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
                                     </div>
+                                    
+                                    {/* ✨ AI SMART ASSISTANT & TOOLS HUBS (2x2 Grid Layout) */}
+                                    <div className="space-y-3 pt-1">
+                                        <div className="px-1">
+                                            <div className="section-title">
+                                                <span className="section-badge">✨</span>
+                                                AI Smart Suite & Discovery
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <button className="ai-grid-btn">
+                                                <div className="ai-icon-circle">📸</div>
+                                                <div className="text-center">
+                                                    <p className="font-bold text-xs text-[#3b2314] m-0">Problem Scanner</p>
+                                                    <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Visual diagnosis tool</p>
+                                                </div>
+                                            </button>
+                                            <button className="ai-grid-btn">
+                                                <div className="ai-icon-circle">🏗️</div>
+                                                <div className="text-center">
+                                                    <p className="font-bold text-xs text-[#3b2314] m-0">Project Planner</p>
+                                                    <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Team architect builder</p>
+                                                </div>
+                                            </button>
+                                            <button className="ai-grid-btn">
+                                                <div className="ai-icon-circle">⭐</div>
+                                                <div className="text-center">
+                                                    <p className="font-bold text-xs text-[#3b2314] m-0">Top Rated Hub</p>
+                                                    <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Browse elite operators</p>
+                                                </div>
+                                            </button>
+                                            <button className="ai-grid-btn">
+                                                <div className="ai-icon-circle">📈</div>
+                                                <div className="text-center">
+                                                    <p className="font-bold text-xs text-[#3b2314] m-0">Smart Estimate</p>
+                                                    <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Predict dynamic costs</p>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    </div>
+
                                 </div>
                             )}
                         </>
