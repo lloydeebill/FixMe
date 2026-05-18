@@ -137,7 +137,7 @@ class DashboardController extends Controller
             $query->latest()->limit(1);
         }, 'customer', 'repairerProfile.user'])
 
-            // 👇 THE FIX IS HERE: Filter out 'pending'
+
             ->where('status', '!=', 'pending')
 
             ->where(function ($q) use ($user) {

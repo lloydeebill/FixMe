@@ -49,7 +49,7 @@ Route::get('/auth/google/callback', [GoogleLoginController::class, 'handleGoogle
 // -----------------------------------------------------------
 Route::middleware(['auth'])->group(function () {
 
-  // --- Email Verification ---
+  // --- Email Verification --- 
   Route::get('/email/verify', function () {
     return Inertia::render('Auth/VerifyEmail');
   })->name('verification.notice');

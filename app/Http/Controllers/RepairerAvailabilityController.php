@@ -142,7 +142,7 @@ class RepairerAvailabilityController extends Controller
     private function isOverlapping($slotStart, $slotEnd, $events)
     {
         foreach ($events as $event) {
-            if (empty($event->start->dateTime)) continue; // Skip all-day events
+            if (empty($event->start->dateTime)) continue;
 
             $eventStart = Carbon::parse($event->start->dateTime);
             $eventEnd = Carbon::parse($event->end->dateTime);
