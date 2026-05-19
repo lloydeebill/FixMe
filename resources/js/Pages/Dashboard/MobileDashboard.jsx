@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
 import ReviewModal from '../../Components/ReviewModal';
 
@@ -248,6 +248,13 @@ const GlobalStyles = () => (
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-slide-up { animation: slideUp 0.4s cubic-bezier(.25,1,.32,1) both; }
+        
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     `}</style>
 );
 
@@ -262,25 +269,62 @@ const CAT_COLORS = [
     { bg: 'rgba(200,170,100,0.15)', emoji: '🧹' },
 ];
 
-const MobileDashboard = ({ 
-    user, 
-    appointment, 
-    categories = [],       
-    selectedCategory, 
-    onSelectCategory, 
-    repairers = [],        
-    onRepairerSelect, 
-    topServices = [],      
+const MobileDashboard = ({
+    user,
+    appointment,
+    categories = [],
+    selectedCategory,
+    onSelectCategory,
+    repairers = [],
+    onRepairerSelect,
+    topServices = [],
     onSwitchToWork,
-    history = [], 
+    history = [],
     conversations = [],
-    pendingReviewsCount = 0, 
+    pendingReviewsCount = 0,
 }) => {
     const [activeTab, setActiveTab] = useState('home');
-    const [reviewingJob, setReviewingJob] = useState(null); 
+    const [reviewingJob, setReviewingJob] = useState(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const pollingRef = useRef(null);
+
+    // ─── Soft reload (only refreshes props, no full page flash) ───
+    const softReload = useCallback(() => {
+        router.reload({ only: ['conversations', 'history', 'appointment', 'pendingReviewsCount'] });
+    }, []);
+
+    // ─── Poll every 8 seconds when on chats or history tab ───
+    useEffect(() => {
+        const INTERVAL = 8000; // 8 seconds
+
+        if (activeTab === 'chats' || activeTab === 'history') {
+            pollingRef.current = setInterval(softReload, INTERVAL);
+        }
+
+        return () => {
+            if (pollingRef.current) clearInterval(pollingRef.current);
+        };
+    }, [activeTab, softReload]);
 
     const handleLogout = () => router.post('/logout');
     const handleOpenChat = (bookingId) => router.visit(`/test-chat/${bookingId}`);
+
+    // 
+    useEffect(() => {
+        if (activeTab === 'chats' || activeTab === 'history') {
+            const id = setInterval(() => {
+                router.reload({ only: ['conversations', 'history', 'appointment', 'pendingReviewsCount'] });
+            }, 8000);
+            return () => clearInterval(id);
+        }
+    }, [activeTab]);
+
+    const handleBookingSuccess = useCallback((newBooking) => {
+        // Immediately switch to history tab so user sees it
+        setActiveTab('history');
+        // Then reload to get the real server state
+        router.reload({ only: ['history', 'appointment', 'pendingReviewsCount'] });
+    }, []);
 
     const scrollToTop = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -359,7 +403,7 @@ const MobileDashboard = ({
                     {/* VIEW A: HOME DASHBOARD */}
                     {activeTab === 'home' && (
                         <>
-                           {!selectedCategory && (
+                           {!selectedCategory ? (
                                 <div className="space-y-6 animate-slide-up">
                                     
                                     {/* Categories Section (Fixed 2x2 Grid Paging) */}
@@ -451,6 +495,70 @@ const MobileDashboard = ({
                                     </div>
 
                                 </div>
+                           ) : (
+                                /* Category Selected View: List of Repairers */
+                                <div className="animate-slide-up space-y-4">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <button 
+                                            onClick={() => onSelectCategory(null)}
+                                            className="w-10 h-10 rounded-full glass flex items-center justify-center shadow-sm"
+                                        >
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                                        </button>
+                                        <div>
+                                            <h2 className="text-lg font-extrabold text-[#3b2314] leading-tight">
+                                                {selectedCategory.name} Experts
+                                            </h2>
+                                            <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">
+                                                {repairers.length} professionals found
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {repairers.length === 0 ? (
+                                        <div className="empty-state">
+                                            <div className="text-4xl mb-3">🕵️</div>
+                                            <h3 className="font-bold text-[#3b2314]">No experts found</h3>
+                                            <p className="text-xs text-gray-500 mt-1">Try another category for now.</p>
+                                            <button onClick={() => onSelectCategory(null)} className="mt-4 btn-caramel text-xs">View All</button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {repairers.map((repairer) => (
+                                                <div key={repairer.id} onClick={() => onRepairerSelect(repairer)} className="list-row flex-col items-start gap-3">
+                                                    <div className="flex items-center gap-3 w-full">
+                                                        <div className="h-12 w-12 rounded-2xl overflow-hidden border-2 border-white shadow-sm flex-shrink-0 bg-gray-100">
+                                                            <img 
+                                                                src={`https://ui-avatars.com/api/?name=${repairer.repairer_profile.business_name}&background=random`} 
+                                                                className="h-full w-full object-cover" 
+                                                                alt={repairer.repairer_profile.business_name} 
+                                                            />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex justify-between items-start">
+                                                                <h3 className="font-bold text-sm text-[#3b2314] truncate">
+                                                                    {repairer.repairer_profile.business_name}
+                                                                </h3>
+                                                                <div className="star-badge">
+                                                                    <span className="text-[#c8a97a]">★</span>
+                                                                    <span>{repairer.repairer_profile.rating || 'New'}</span>
+                                                                </div>
+                                                            </div>
+                                                            <p className="text-[11px] text-gray-500 font-medium">
+                                                                📍 {repairer.location?.address || 'Davao City'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1.5 mt-1">
+                                                        {repairer.repairer_profile.skills?.slice(0, 3).map(skill => (
+                                                            <span key={skill.id} className="skill-chip">{skill.name}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </>
                     )}
@@ -458,6 +566,24 @@ const MobileDashboard = ({
                     {/* VIEW B: CHATS LIST */}
                     {activeTab === 'chats' && (
                         <div className="animate-slide-up space-y-3">
+
+                            {/* Refresh button */}
+                            <div className="flex justify-end mb-1">
+                                <button
+                                    onClick={() => {
+                                        setIsRefreshing(true);
+                                        router.reload({
+                                            only: ['conversations'],
+                                            onFinish: () => setIsRefreshing(false),
+                                        });
+                                    }}
+                                    className="text-[10px] font-bold text-[#7c5230] flex items-center gap-1 opacity-60"
+                                >
+                                    <span style={{ display: 'inline-block', animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }}>↻</span>
+                                    {isRefreshing ? 'Refreshing…' : 'Refresh'}
+                                </button>
+                            </div>
+
                             {conversations.length === 0 ? (
                                 <div className="empty-state">
                                     <div className="w-13 h-13 bg-[#f5ede0] rounded-full flex items-center justify-center mx-auto mb-3 text-xl">💬</div>
