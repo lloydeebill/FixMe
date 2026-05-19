@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
 import ReviewModal from '../../Components/ReviewModal';
+import ProblemScanner from '../../Components/ProblemScanner';
+import ProjectPlanner from '../../Components/ProjectPlanner';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 
 /* ─────────────────────────────────────────────────────────────
    LIQUID GLASS — FixMe. Mobile Dashboard (warm earth-tone palette)
@@ -124,17 +128,23 @@ const GlobalStyles = () => (
         }
 
         /* ✨ AI SMART UTILITY HUB GRID */
+       /* ✨ AI SMART UTILITY HUB GRID */
         .ai-grid-btn {
             background: rgba(255, 252, 245, 0.65);
             backdrop-filter: var(--blur-sm);
             -webkit-backdrop-filter: var(--blur-sm);
             border: 1px solid rgba(176, 125, 74, 0.35);
             border-radius: 20px;
-            padding: 16px 12px;
+            
+            /* 👇 Make the cards taller and perfectly centered */
+            aspect-ratio: 1 / 1;
+            padding: 20px 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            gap: 12px; 
+            
             position: relative;
             overflow: hidden;
             box-shadow: 0 4px 14px rgba(59,35,20,0.05), inset 0 1px 0 rgba(255,255,255,0.6);
@@ -151,11 +161,13 @@ const GlobalStyles = () => (
             background: rgba(255, 248, 238, 0.90);
             box-shadow: 0 2px 6px rgba(59,35,20,0.03);
         }
+        
+        /* 👇 Slightly larger icon circle to match the bigger card */
         .ai-icon-circle {
-            width: 44px; height: 44px;
-            border-radius: 14px;
+            width: 50px; height: 50px; 
+            border-radius: 16px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 20px;
+            font-size: 24px; 
             background: linear-gradient(135deg, rgba(245,237,224,0.90) 0%, rgba(210,180,140,0.40) 100%);
             border: 1px solid rgba(255,255,255,0.80);
             box-shadow: 0 2px 8px rgba(176,125,74,0.10);
@@ -269,6 +281,7 @@ const CAT_COLORS = [
     { bg: 'rgba(200,170,100,0.15)', emoji: '🧹' },
 ];
 
+
 const MobileDashboard = ({
     user,
     appointment,
@@ -345,7 +358,7 @@ const MobileDashboard = ({
             <div className="min-h-screen flex flex-col relative pb-28 z-10">
                 
                 {/* ================= HEADER SECTION ================= */}
-                {activeTab === 'home' && (
+                {(activeTab === 'home' || activeTab === 'scanner' || activeTab === 'planner') && (
                     <div className="hero-mobile glass-dark glass-edge shadow-xl">
                         <div className="flex justify-between items-center relative z-10">
                             {appointment?.exists ? (
@@ -354,7 +367,7 @@ const MobileDashboard = ({
                                         <span className="text-xl">🗓️</span>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] uppercase tracking-widest text-white/60 font-semibold mb-0.5">Upcoming Focus</p>
+                                        <p className="text-[10px] uppercase tracking-widest text-white/60 font-semibold mb-0.5">Upcoming Job</p>
                                         <div className="flex flex-col">
                                             <span className="font-bold text-base leading-tight text-white">{appointment.type}</span>
                                             <span className="text-xs text-[#c8a97a] font-medium mt-0.5">{appointment.day} {appointment.month} • {appointment.time}</span>
@@ -454,7 +467,7 @@ const MobileDashboard = ({
                                         </div>
                                     </div>
                                     
-                                    {/* ✨ AI SMART ASSISTANT & TOOLS HUBS (2x2 Grid Layout) */}
+                                    {/* ✨ AI SMART ASSISTANT & TOOLS HUBS (2-Button Grid Layout) */}
                                     <div className="space-y-3 pt-1">
                                         <div className="px-1">
                                             <div className="section-title">
@@ -463,34 +476,26 @@ const MobileDashboard = ({
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <button className="ai-grid-btn">
+                                            
+                                            {/* Button 1: Problem Scanner */}
+                                            <button className="ai-grid-btn" onClick={() => { setActiveTab('scanner'); window.scrollTo({ top: 0 }); }}>
                                                 <div className="ai-icon-circle">📸</div>
                                                 <div className="text-center">
                                                     <p className="font-bold text-xs text-[#3b2314] m-0">Problem Scanner</p>
                                                     <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Visual diagnosis tool</p>
                                                 </div>
                                             </button>
-                                            <button className="ai-grid-btn">
+                                            
+                                            {/* Button 2: Project Planner */}
+                                            <button className="ai-grid-btn" onClick={() => { setActiveTab('planner'); window.scrollTo({ top: 0 }); }}>
                                                 <div className="ai-icon-circle">🏗️</div>
                                                 <div className="text-center">
                                                     <p className="font-bold text-xs text-[#3b2314] m-0">Project Planner</p>
                                                     <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Team architect builder</p>
                                                 </div>
                                             </button>
-                                            <button className="ai-grid-btn">
-                                                <div className="ai-icon-circle">⭐</div>
-                                                <div className="text-center">
-                                                    <p className="font-bold text-xs text-[#3b2314] m-0">Top Rated Hub</p>
-                                                    <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Browse elite operators</p>
-                                                </div>
-                                            </button>
-                                            <button className="ai-grid-btn">
-                                                <div className="ai-icon-circle">📈</div>
-                                                <div className="text-center">
-                                                    <p className="font-bold text-xs text-[#3b2314] m-0">Smart Estimate</p>
-                                                    <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Predict dynamic costs</p>
-                                                </div>
-                                            </button>
+
+                                            {/* The other two buttons have been removed! */}
                                         </div>
                                     </div>
 
@@ -696,8 +701,35 @@ const MobileDashboard = ({
                         </div>
                     )}
 
+                    {/* VIEW E: PROBLEM SCANNER */}
+                    {activeTab === 'scanner' && (
+                        <ProblemScanner 
+                            onBack={() => setActiveTab('home')} 
+                            onFindFixer={() => {
+                                setActiveTab('home'); 
+                                onSelectCategory(null); 
+                                window.scrollTo({ top: 0, behavior: 'smooth' }); 
+                            }} 
+                        />
+                    )}
+
+                    {/* VIEW F: PROJECT PLANNER */}
+                    {activeTab === 'planner' && (
+                        <ProjectPlanner 
+                            onBack={() => setActiveTab('home')} 
+                            onFindFixer={() => {
+                                setActiveTab('home'); 
+                                onSelectCategory(null); 
+                                window.scrollTo({ top: 0, behavior: 'smooth' }); 
+                            }} 
+                        />
+                    )}
+
                 </div>
 
+                
+
+    
                 {/* ================= BOTTOM NAVIGATION ================= */}
                 <div className="fixed bottom-4 left-4 right-4 glass rounded-[24px] border border-white/80 py-3 px-4 flex justify-between items-center z-50 shadow-xl shadow-black/5">
                     <NavButton 
@@ -729,12 +761,14 @@ const MobileDashboard = ({
                     />
                 </div>
 
+                {/* Your other code... */}
                 {reviewingJob && (
                     <ReviewModal 
                         booking={reviewingJob} 
                         onClose={() => setReviewingJob(null)} 
                     />
                 )}
+
 
             </div>
         </>
