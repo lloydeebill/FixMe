@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
 import ReviewModal from '../../Components/ReviewModal';
+import ProblemScanner from '../../Components/ProblemScanner';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 
 /* ─────────────────────────────────────────────────────────────
    LIQUID GLASS — FixMe. Mobile Dashboard (warm earth-tone palette)
@@ -269,6 +272,7 @@ const CAT_COLORS = [
     { bg: 'rgba(200,170,100,0.15)', emoji: '🧹' },
 ];
 
+
 const MobileDashboard = ({
     user,
     appointment,
@@ -345,7 +349,7 @@ const MobileDashboard = ({
             <div className="min-h-screen flex flex-col relative pb-28 z-10">
                 
                 {/* ================= HEADER SECTION ================= */}
-                {activeTab === 'home' && (
+                {(activeTab === 'home' || activeTab === 'scanner') && (
                     <div className="hero-mobile glass-dark glass-edge shadow-xl">
                         <div className="flex justify-between items-center relative z-10">
                             {appointment?.exists ? (
@@ -354,7 +358,7 @@ const MobileDashboard = ({
                                         <span className="text-xl">🗓️</span>
                                     </div>
                                     <div>
-                                        <p className="text-[10px] uppercase tracking-widest text-white/60 font-semibold mb-0.5">Upcoming Focus</p>
+                                        <p className="text-[10px] uppercase tracking-widest text-white/60 font-semibold mb-0.5">Upcoming Job</p>
                                         <div className="flex flex-col">
                                             <span className="font-bold text-base leading-tight text-white">{appointment.type}</span>
                                             <span className="text-xs text-[#c8a97a] font-medium mt-0.5">{appointment.day} {appointment.month} • {appointment.time}</span>
@@ -463,7 +467,8 @@ const MobileDashboard = ({
                                             </div>
                                         </div>
                                         <div className="grid grid-cols-2 gap-3">
-                                            <button className="ai-grid-btn">
+                                            {/* Change your button to look exactly like this: */}
+                                            <button className="ai-grid-btn" onClick={() => { setActiveTab('scanner'); window.scrollTo({ top: 0 }); }}>
                                                 <div className="ai-icon-circle">📸</div>
                                                 <div className="text-center">
                                                     <p className="font-bold text-xs text-[#3b2314] m-0">Problem Scanner</p>
@@ -696,8 +701,23 @@ const MobileDashboard = ({
                         </div>
                     )}
 
+                    {/* VIEW E: PROBLEM SCANNER */}
+                    {activeTab === 'scanner' && (
+                        <ProblemScanner 
+                            onBack={() => setActiveTab('home')} 
+                            onFindFixer={() => {
+                                setActiveTab('home'); 
+                                onSelectCategory(null); 
+                                window.scrollTo({ top: 0, behavior: 'smooth' }); 
+                            }} 
+                        />
+                    )}
+
                 </div>
 
+                
+
+    
                 {/* ================= BOTTOM NAVIGATION ================= */}
                 <div className="fixed bottom-4 left-4 right-4 glass rounded-[24px] border border-white/80 py-3 px-4 flex justify-between items-center z-50 shadow-xl shadow-black/5">
                     <NavButton 
@@ -729,12 +749,14 @@ const MobileDashboard = ({
                     />
                 </div>
 
+                {/* Your other code... */}
                 {reviewingJob && (
                     <ReviewModal 
                         booking={reviewingJob} 
                         onClose={() => setReviewingJob(null)} 
                     />
                 )}
+
 
             </div>
         </>
