@@ -44,18 +44,35 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
         setAnalysisResult("");
 
         try {
-            const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            // Convert file to base64
+            const base64Data = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.readAsDataURL(imageFile);
+            });
 
-            const imagePart = await fileToGenerativePart(imageFile);
-            const prompt = "You are a home repair expert. Look at this image and identify the problem. Explain briefly what is broken, what might have caused it, and what type of professional (e.g., Plumber, Electrician, Carpenter) is needed to fix it. Keep it concise and helpful. Format your response in short paragraphs using plain text only. Do NOT use any asterisks, bolding, bullet points, or markdown formatting.";
+            // Call your Laravel backend instead of Google
+            const response = await fetch('/api/scan-problem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64Data })
+            });
 
-            const result = await model.generateContent([prompt, imagePart]);
-            const response = await result.response;
-            setAnalysisResult(response.text());
+            // In ProblemScanner.jsx
+            const data = await response.json();
+
+            if (data.error) {
+                setAnalysisResult("Error: " + (data.error.message || "Something went wrong. Please check your quota."));
+                return;
+            }
+
+            // Now safely access the data
+            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No diagnosis found.";
+            setAnalysisResult(resultText);
+
         } catch (error) {
-            console.error("Gemini API Error:", error);
-            setAnalysisResult("Sorry, I encountered an error trying to analyze the image. Please try again.");
+            console.error("Backend Error:", error);
+            setAnalysisResult("System busy. Please try again in a moment.");
         } finally {
             setIsAnalyzing(false);
         }

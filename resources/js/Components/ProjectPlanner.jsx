@@ -18,25 +18,29 @@ const ProjectPlanner = ({ onBack, onFindFixer }) => {
         setPlanResult("");
 
         try {
-            const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            // We call your Laravel backend route we defined in api.php
+            const response = await fetch('/api/plan-project', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json' 
+                },
+                body: JSON.stringify({ project: projectIdea })
+            });
 
-            const prompt = `You are an expert home renovation and repair project manager. The user wants to do the following project: "${projectIdea}". 
-            Break this project down into 3 to 5 logical sequential steps. For each step, explain briefly what needs to be done and state exactly what type of professional is required (e.g., Carpenter, Plumber, Electrician, Painter). 
-            Keep it highly concise, practical, and helpful. Format your response in short paragraphs using plain text only. Do NOT use any asterisks, bolding, bullet points, or markdown formatting.`;
+            const data = await response.json();
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            setPlanResult(response.text());
-        } catch (error) {
-            console.error("Gemini API Error:", error);
-            
-            // Check if it's a 503 High Demand error
-            if (error.message.includes("503") || error.message.includes("high demand")) {
-                setPlanResult("Our AI architect is currently helping a lot of users! Please wait just a few seconds and tap Generate again.");
-            } else {
-                setPlanResult("Sorry, I encountered an error trying to generate your plan. Please try again.");
+            if (!response.ok) {
+                throw new Error(data.error || "Failed to generate plan");
             }
+
+            // Extract text from Google's response structure
+            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No plan generated.";
+            setPlanResult(resultText);
+
+        } catch (error) {
+            console.error("Backend Error:", error);
+            setPlanResult("System busy. Please try again in a moment.");
         } finally {
             setIsPlanning(false);
         }
