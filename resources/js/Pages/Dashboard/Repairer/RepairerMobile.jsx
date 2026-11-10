@@ -153,7 +153,7 @@ export default function RepairerMobile({
                             zoomControl={false}
                             style={{ height: '100%', width: '100%' }}
                         >
-                            <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
                             <Marker position={[repairerLat, repairerLng]} icon={createEmojiIcon('repairer')}>
                                 <Popup><strong>You</strong></Popup>
                             </Marker>
@@ -463,6 +463,7 @@ export default function RepairerMobile({
 
                 {activeTab === 'profile' && (
                     <div className="px-6 pt-10 text-center">
+                        <a href="/provider/tesda-qualifications" className="mb-4 block w-full rounded-2xl border border-[#e3e8ef] bg-white py-4 font-bold text-[#0965e8] shadow-sm">TESDA Qualifications</a>
                         {/* Switch Button -> Beige/Brown */}
                         <button onClick={onSwitchToCustomer} className="w-full py-4 bg-white border border-[#e3e8ef] font-bold rounded-2xl mb-4 shadow-sm text-[#0965e8]">Switch to Customer</button>
                         <button onClick={onLogout} className="w-full py-4 bg-red-50 text-red-600 font-bold rounded-2xl">Log Out</button>

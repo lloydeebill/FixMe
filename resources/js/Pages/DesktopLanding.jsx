@@ -254,7 +254,7 @@ export default function DesktopLanding() {
                 transition={{ duration: 1 }}
                 className="text-8xl md:text-[12rem] font-black uppercase tracking-tighter mb-4 leading-none"
             >
-              FixMe
+              SkillLink
             </motion.h2>
             <div className="text-2xl md:text-4xl font-serif italic opacity-90 flex flex-wrap justify-center gap-x-3">
                <span>Built with</span>
@@ -277,7 +277,7 @@ export default function DesktopLanding() {
 
           <motion.div style={{ opacity: logoOpacity, y: logoY, scale: logoScale }} className="absolute z-20 flex flex-col items-center text-center px-4">
              <p className="text-[#a57c52] font-bold tracking-[0.3em] text-xs md:text-sm uppercase mb-4">Trusted • Skilled • Local</p>
-             <h1 className="text-6xl md:text-8xl font-black text-[#5d4037] mb-2 tracking-tighter leading-[0.9] drop-shadow-sm uppercase">Welcome to <br /> Fix Me</h1>
+             <h1 className="text-6xl md:text-8xl font-black text-[#5d4037] mb-2 tracking-tighter leading-[0.9] drop-shadow-sm uppercase">Welcome to <br /> SkillLink</h1>
              <div className="mt-8 animate-bounce text-[#5d4037] opacity-50 text-sm uppercase tracking-widest">Scroll to explore</div>
           </motion.div>
 
@@ -365,7 +365,7 @@ export default function DesktopLanding() {
                   <p>Because they work informally, they struggle to build a verifiable career, and customers struggle to trust them.</p>
                </ContextCard>
                <ContextCard label="The Solution" title="Bridging the Gap." icon="🌉">
-                  <p><strong>FixMe</strong> is not just an ‘Grab for Repairs'; it is a Professional Development & Dispatch Platform.</p>
+                  <p><strong>SkillLink</strong> is not just an ‘Grab for Repairs'; it is a Professional Development & Dispatch Platform.</p>
                   <p>We built this system to bridge the gap between the informal gig economy and formal agency employment, giving value to every job done.</p>
                </ContextCard>
                <ContextCard label="Core Objective: Client" title="Safe, Trackable, & Trusted." icon="🛡️">

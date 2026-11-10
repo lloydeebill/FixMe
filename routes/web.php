@@ -20,6 +20,7 @@ use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Conversation;
 use App\Models\Booking;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\TesdaQualificationController;
 
 // -----------------------------------------------------------
 // 1. PUBLIC FACING PAGES
@@ -101,6 +102,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/settings', function () {
       return Inertia::render('Settings');
     })->name('settings');
+
+    Route::prefix('provider/tesda-qualifications')->name('tesda.')->group(function () {
+      Route::get('/', [TesdaQualificationController::class, 'index'])->name('index');
+      Route::post('/', [TesdaQualificationController::class, 'store'])->middleware('throttle:10,1')->name('store');
+      Route::get('/{qualification}/image', [TesdaQualificationController::class, 'image'])->name('image');
+      Route::post('/{qualification}/retry', [TesdaQualificationController::class, 'retry'])->middleware('throttle:10,1')->name('retry');
+      Route::delete('/{qualification}', [TesdaQualificationController::class, 'destroy'])->name('destroy');
+    });
 
     // --- REPAIRER UPGRADE (For existing customers) ---
     // This is the "Become a Repairer" button for someone who is ALREADY a customer.

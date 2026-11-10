@@ -69,4 +69,9 @@ class RepairerProfile extends Model
     {
         return $this->hasMany(RepairerAvailability::class, 'repairer_profile_id');
     }
+
+    public function tesdaQualifications(): HasMany
+    {
+        return $this->hasMany(TesdaQualification::class);
+    }
 }

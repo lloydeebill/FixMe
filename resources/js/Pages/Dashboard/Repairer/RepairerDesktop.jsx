@@ -166,7 +166,7 @@ export default function RepairerDesktop({
                             zoom={13}
                             style={{ height: '100%', width: '100%' }}
                         >
-                            <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
                             <Marker position={[repairerLat, repairerLng]} icon={createEmojiIcon('repairer')}>
                                 <Popup><strong>You (Repairer)</strong></Popup>
                             </Marker>
@@ -594,6 +594,7 @@ export default function RepairerDesktop({
                         <SidebarItem id="jobs" label="Jobs" icon={<FiBriefcase />} disabled={!isOnSchedule} />
                         <SidebarItem id="chats" label="Messages" icon={<FiMessageCircle />} disabled={!isOnSchedule} badge={conversations.filter(c => c.unread_count > 0).length} />
                         <SidebarItem id="schedule" label="Schedule" icon={<FiCalendar />} disabled={false} />
+                        <a href="/provider/tesda-qualifications" className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#0965e8] hover:bg-[#edf4ff]">TESDA Qualifications</a>
                     </nav>
                 </div>
 

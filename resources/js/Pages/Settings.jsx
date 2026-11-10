@@ -81,6 +81,12 @@ export default function Settings() {
                         </div>
                     </div>
 
+                    {user.is_repairer && <div className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-8">
+                        <h3 className="text-lg font-semibold">TESDA Qualifications</h3>
+                        <p className="mt-2 text-sm text-gray-500">Keep your certificate submissions and screening results in your provider account.</p>
+                        <Link href="/provider/tesda-qualifications" className="mt-4 inline-block rounded-xl bg-[#0965e8] px-4 py-3 text-sm font-semibold text-white">Manage qualifications</Link>
+                    </div>}
+
                     {/* 3. LOGOUT BUTTON (Optional Red Zone) */}
                     <div className="flex justify-end">
                         <Link
