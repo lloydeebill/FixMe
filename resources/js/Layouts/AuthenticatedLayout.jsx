@@ -1,3 +1,4 @@
+import '../skilllink.css';
 import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
 
@@ -5,26 +6,26 @@ export default function AuthenticatedLayout({ user, header, children }) {
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="skilllink-screen min-h-screen bg-gray-100">
             {/* --- TOP NAVIGATION BAR --- */}
             <nav className="bg-white border-b border-gray-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
-                        
+
                         {/* LEFT SIDE: Logo & Links */}
                         <div className="flex">
                             {/* Logo */}
                             <div className="shrink-0 flex items-center">
                                 <Link href="/app"> {/* ✅ FIXED: Points to /app */}
-                                    <h1 className="text-2xl font-black text-blue-600 tracking-tighter">
-                                        FixMe.
+                                    <h1 className="text-2xl font-semibold text-[#0965e8] tracking-tighter">
+                                        SkillLink
                                     </h1>
                                 </Link>
                             </div>
 
                             {/* Navigation Links (Desktop) */}
                             <div className="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                                
+
                                 {/* 1. DASHBOARD LINK */}
                                 <Link
                                     href="/app" // ✅ FIXED: Changed from /dashboard to /app
@@ -34,17 +35,17 @@ export default function AuthenticatedLayout({ user, header, children }) {
                                 </Link>
 
                                 {/* 2. BECOME A PRO LINK (Only for Customers) */}
-                                {!user.isRepairer && (
+                                {!user.is_repairer && (
                                     <Link
                                         href="/become-repairer"
-                                        className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500 text-sm font-bold leading-5 text-blue-600 hover:text-blue-800 transition duration-150 ease-in-out"
+                                        className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500 text-sm font-bold leading-5 text-[#0965e8] hover:text-blue-800 transition duration-150 ease-in-out"
                                     >
                                         Become a Pro
                                     </Link>
                                 )}
 
                                 {/* 3. WORK MODE BADGE (Only for Repairers) */}
-                                {user.isRepairer === 1 && (
+                                {Boolean(user.is_repairer) && (
                                     <span className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-green-600">
                                         ✅ Repairer Account
                                     </span>
@@ -65,7 +66,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
                                 </div>
 
                                 {/* Simple Hover Dropdown */}
-                                <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                                <div className="absolute right-0 w-48 mt-2 py-2 bg-white rounded-md shadow-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
                                     <Link
                                         href="/logout"
                                         method="post"
@@ -116,10 +117,10 @@ export default function AuthenticatedLayout({ user, header, children }) {
                         </Link>
 
                         {/* Mobile "Become a Pro" Link */}
-                        {!user.isRepairer && (
+                        {!user.is_repairer && (
                             <Link
                                 href="/become-repairer"
-                                className="block w-full pl-3 pr-4 py-2 border-l-4 border-transparent text-left text-base font-bold text-gray-600 hover:text-blue-600 hover:bg-gray-50 hover:border-gray-300 focus:outline-none transition duration-150 ease-in-out"
+                                className="block w-full pl-3 pr-4 py-2 border-l-4 border-transparent text-left text-base font-bold text-gray-600 hover:text-[#0965e8] hover:bg-gray-50 hover:border-gray-300 focus:outline-none transition duration-150 ease-in-out"
                             >
                                 Become a Pro
                             </Link>

@@ -6,30 +6,25 @@ export default function RegisterForm() {
   // We removed useForm and all state variables since we aren't processing inputs manually anymore.
 
   return (
-    <div className="w-full bg-white border border-gray-200 rounded-xl shadow-xl p-6 sm:p-8">
+    <div className="w-full bg-white border border-gray-200 rounded-xl shadow-sm p-6 sm:p-8">
         {/* Logo */}
         <div className="flex justify-center mb-4">
-            <img 
-                src="/FixMeLogo.svg" 
-                alt="FixMe Logo" 
-                className="w-16 h-16 object-contain" 
-                onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/64x64/0056b3/ffffff?text=F M" }}
-            />
+            <span className="text-2xl font-bold tracking-tight text-[#0965e8]">SkillLink</span>
         </div>
 
         {/* Title */}
-        <h2 className="text-2xl font-bold text-center text-blue-800 mb-2">Create your account</h2>
+        <h2 className="text-2xl font-bold text-center text-[#172335] mb-2">Create your account</h2>
         <p className="text-sm text-gray-500 text-center mb-8">
-            Join FixMe instantly. No password required.
+            Join SkillLink instantly. No password required.
         </p>
 
         {/* Google Button - Now the Main and Only Action */}
-        <a 
+        <a
             href="/auth/google"
-            className="flex items-center justify-center w-full border border-gray-300 bg-white py-3 rounded-lg hover:bg-gray-50 transition shadow-sm group"
+            className="flex items-center justify-center w-full border border-[#0965e8] bg-[#0965e8] py-3 rounded-xl hover:bg-[#0753be] transition shadow-sm group"
         >
-            <FcGoogle className="mr-3 text-2xl group-hover:scale-110 transition-transform" />
-            <span className="font-medium text-gray-700 text-base">Continue with Google</span>
+            <FcGoogle className="mr-3 text-2xl bg-white rounded-full p-0.5 group-hover:scale-110 transition-transform" />
+            <span className="font-semibold text-white text-sm">Continue with Google</span>
         </a>
 
         {/* Link to Login Page */}

@@ -1,0 +1,37 @@
+﻿/* Shared SkillLink styling, explicitly scoped to the remaining screens. */
+.skilllink-screen, .skilllink-dialog {
+    font-family: Arial, Helvetica, sans-serif;
+    color: #172335;
+    --sl-blue: #0965e8;
+    --sl-muted: #647084;
+}
+.skilllink-screen { background-color: #f4f6f8; min-height:100dvh; }
+.skilllink-screen button:focus-visible, .skilllink-screen a:focus-visible,
+.skilllink-dialog button:focus-visible { outline:3px solid #83b5ff; outline-offset:3px; }
+.skilllink-screen input:focus-visible, .skilllink-screen textarea:focus-visible,
+.skilllink-dialog input:focus-visible, .skilllink-dialog textarea:focus-visible { outline:2px solid #83b5ff; outline-offset:2px; }
+.skilllink-screen input[type=checkbox] { accent-color:#0965e8; }
+.skilllink-screen button:disabled, .skilllink-dialog button:disabled { cursor:not-allowed; }
+.skilllink-screen nav button svg { width:20px; height:20px; }
+.skilllink-screen .provider-jobs-table { font-size:13px; }
+.skilllink-screen .provider-jobs-table th, .skilllink-screen .provider-jobs-table td { padding:14px 12px; }
+@media (min-width:768px) and (max-width:1023px) {
+    .skilllink-screen > aside { width:200px; padding:20px 12px; }
+    .skilllink-screen > aside + main { margin-left:200px; padding:24px 16px; min-width:0; }
+}
+@media (max-width:767px) {
+    .skilllink-screen input[type=time] { min-width:0; }
+}
+
+.skilllink-ai { font-family:Arial,Helvetica,sans-serif; color:#172335; max-width:760px; margin-inline:auto; }
+.skilllink-ai .sl-ai-panel { background:#fff; border:1px solid #e3e8ef; box-shadow:none; }
+.skilllink-ai .sl-ai-card { background:#f4f6f8; border:1px solid #e3e8ef; }
+.skilllink-ai .sl-ai-primary { background:#0965e8; color:#fff; border:0; border-radius:12px; font-weight:600; }
+.skilllink-ai .sl-ai-primary:hover { background:#0753be; }
+.skilllink-ai button:disabled { opacity:.5; cursor:not-allowed; }
+.skilllink-ai textarea { background:#fff; border:1px solid #cbd5e1; }
+.skilllink-ai button:focus-visible { outline:3px solid #83b5ff; outline-offset:2px; }
+.skilllink-dialog input, .skilllink-dialog textarea { padding:10px 12px; }
+.skilllink-chat { min-height:0; }
+.skilllink-chat > :last-child { padding-bottom:max(12px,env(safe-area-inset-bottom)); }
+.skilllink-screen form button[type=submit] { background-color:#0965e8; }

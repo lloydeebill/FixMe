@@ -1,7 +1,8 @@
+import '../skilllink.css';
 import React from 'react';
 import { Head, useForm, Link } from '@inertiajs/react';
-import RepairerFormFields from '@/Components/RepairerFormFields'; 
-import LocationPicker from '@/Components/LocationPicker';       
+import RepairerFormFields from '@/Components/RepairerFormFields';
+import LocationPicker from '@/Components/LocationPicker';
 
 export default function RepairerRegister({ auth, availableSkills }) {
     const { data, setData, post, processing, errors } = useForm({
@@ -20,13 +21,13 @@ export default function RepairerRegister({ auth, availableSkills }) {
             ...prev,
             latitude: locData.lat,
             longitude: locData.lng,
-            location: locData.address 
+            location: locData.address
         }));
     };
 
     const submit = (e) => {
         e.preventDefault();
-        
+
         // Validation
         if (!data.latitude) {
             alert("Please pin your business location on the map.");
@@ -48,27 +49,27 @@ export default function RepairerRegister({ auth, availableSkills }) {
     };
 
     return (
-        <div className="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 font-sans">
+        <div className="skilllink-screen min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 font-sans">
             <Head title="Become a Repairer" />
 
             <div className="mb-6 text-center">
-                <h1 className="text-3xl font-black text-blue-600 tracking-tighter">FixMe.</h1>
+                <h1 className="text-3xl font-semibold text-[#0965e8] tracking-tighter">SkillLink</h1>
                 <p className="text-gray-500 text-sm mt-2">Join our network of professional fixers</p>
             </div>
 
-            <div className="w-full sm:max-w-lg mt-6 px-6 py-8 bg-white shadow-md overflow-hidden sm:rounded-lg">
+            <div className="w-full sm:max-w-lg mt-6 px-6 py-8 bg-white shadow-sm overflow-hidden sm:rounded-lg">
                 <form onSubmit={submit} className="space-y-5">
-                    
-                    <RepairerFormFields 
+
+                    <RepairerFormFields
                         data={data}
                         setData={setData}
                         errors={errors}
-                        availableSkills={availableSkills} // 
+                        availableSkills={availableSkills} //
                     />
 
                     <div className="pt-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Business Location</label>
-                        <LocationPicker 
+                        <LocationPicker
                             initialLat={data.latitude}
                             initialLng={data.longitude}
                             onLocationChange={handleLocationChange}
@@ -96,7 +97,7 @@ export default function RepairerRegister({ auth, availableSkills }) {
                         <button
                             type="submit"
                             disabled={processing}
-                            className={`inline-flex items-center px-4 py-3 bg-black border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 transition ease-in-out duration-150 ${
+                            className={`inline-flex items-center px-4 py-3 bg-[#0965e8] border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-[#0753be] active:bg-gray-900 transition ease-in-out duration-150 ${
                                 processing ? 'opacity-25' : ''
                             }`}
                         >

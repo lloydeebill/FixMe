@@ -1,3 +1,4 @@
+import '../skilllink.css';
 import React, { useState, useRef } from 'react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
@@ -23,7 +24,7 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
             const reader = new FileReader();
             reader.onloadend = () => setImagePreview(reader.result);
             reader.readAsDataURL(file);
-            setAnalysisResult(""); 
+            setAnalysisResult("");
         }
     };
 
@@ -79,37 +80,37 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
     };
 
     return (
-        <div className="animate-slide-up w-full flex-1 flex flex-col h-full">
-            <div className="glass-dark w-full rounded-[32px] border border-white/20 shadow-xl overflow-hidden flex flex-col relative">
-                
+        <div className="skilllink-ai animate-slide-up w-full flex-1 flex flex-col h-full">
+            <div className="sl-ai-panel w-full rounded-2xl border border-white/20 shadow-sm overflow-hidden flex flex-col relative">
+
                 {/* Header with Back Button */}
-                <div className="flex items-center p-4 border-b border-white/10 gap-4">
-                    <button onClick={handleBack} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/90 active:scale-95 transition-transform font-bold text-lg">
+                <div className="flex items-center p-4 border-b border-gray-200 gap-4">
+                    <button onClick={handleBack} className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-[#172335] active:scale-95 transition-transform font-bold text-lg">
                         ←
                     </button>
-                    <div className="flex items-center gap-2 text-white">
+                    <div className="flex items-center gap-2 text-[#172335]">
                         <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-sm">📸</div>
                         <h2 className="font-bold text-base">AI Problem Scanner</h2>
                     </div>
                 </div>
 
                 <div className="p-5 flex-1 flex flex-col gap-5">
-                    
+
                     {/* INSTRUCTIONS AREA */}
                     {!imagePreview && (
-                        <div className="glass rounded-2xl p-4 border border-white/50 text-[#3b2314] shadow-sm">
+                        <div className="sl-ai-card rounded-2xl p-4 border border-white/50 text-[#172335] shadow-sm">
                             <h3 className="font-bold text-sm mb-3">How it works:</h3>
                             <ul className="text-xs space-y-3 font-medium text-gray-700 m-0 pl-1">
                                 <li className="flex items-start gap-2">
-                                    <span className="text-[#b07d4a] font-bold">1.</span> 
+                                    <span className="text-[#0965e8] font-bold">1.</span>
                                     Take a clear, well-lit photo of the broken item or issue.
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <span className="text-[#b07d4a] font-bold">2.</span> 
+                                    <span className="text-[#0965e8] font-bold">2.</span>
                                     Let the AI diagnose the problem instantly.
                                 </li>
                                 <li className="flex items-start gap-2">
-                                    <span className="text-[#b07d4a] font-bold">3.</span> 
+                                    <span className="text-[#0965e8] font-bold">3.</span>
                                     Connect with local experts if you need a hand.
                                 </li>
                             </ul>
@@ -117,11 +118,11 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
                     )}
 
                     {/* Image Uploader */}
-                    <div className="w-full aspect-[4/3] rounded-[20px] border-2 border-dashed border-white/30 flex flex-col items-center justify-center bg-white/5 relative overflow-hidden active:bg-white/10 transition-colors" onClick={() => fileInputRef.current?.click()}>
+                    <div className="w-full aspect-[4/3] rounded-[20px] border-2 border-dashed border-gray-300 flex flex-col items-center justify-center bg-white/5 relative overflow-hidden active:bg-white/10 transition-colors" onClick={() => fileInputRef.current?.click()}>
                         {imagePreview ? (
                             <img src={imagePreview} alt="To analyze" className="w-full h-full object-cover" />
                         ) : (
-                            <div className="text-center text-white/60 p-4">
+                            <div className="text-center text-[#647084] p-4">
                                 <div className="text-3xl mb-2">📥</div>
                                 <p className="text-sm font-bold">Tap to upload or take a photo</p>
                                 <p className="text-xs mt-1">JPEG, PNG supported</p>
@@ -132,14 +133,14 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
 
                     {/* Action Button */}
                     {imagePreview && !analysisResult && (
-                        <button onClick={analyzeImage} disabled={isAnalyzing} className="btn-caramel w-full py-3.5 text-sm flex justify-center items-center gap-2">
+                        <button onClick={analyzeImage} disabled={isAnalyzing} className="sl-ai-primary w-full py-3.5 text-sm flex justify-center items-center gap-2">
                             {isAnalyzing ? "✨ Analyzing with AI..." : "Scan Problem"}
                         </button>
                     )}
 
                     {/* Result Output */}
                     {analysisResult && (
-                        <div className="glass rounded-2xl p-4 border border-white/50 text-[#3b2314]">
+                        <div className="sl-ai-card rounded-2xl p-4 border border-white/50 text-[#172335]">
                             <div className="flex items-center gap-2 mb-3">
                                 <span className="section-badge bg-[#c8a97a]/20 text-lg">🤖</span>
                                 <h3 className="font-bold text-sm">Diagnosis Complete</h3>
@@ -147,10 +148,10 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
                             <div className="text-xs leading-relaxed space-y-2 whitespace-pre-line font-medium text-gray-700">
                                 {analysisResult}
                             </div>
-                            
+
                             <div className="mt-5 text-center border-t border-black/10 pt-4">
                                 <p className="text-xs text-gray-500 font-bold mb-3">Having a hard time fixing this?</p>
-                                <button onClick={onFindFixer} className="btn-dark py-3 w-full text-xs">
+                                <button onClick={onFindFixer} className="sl-ai-primary py-3 w-full text-xs">
                                     Find a Local Repairer
                                 </button>
                             </div>
@@ -162,4 +163,4 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
     );
 };
 
-export default ProblemScanner; 
+export default ProblemScanner;

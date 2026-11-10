@@ -1,25 +1,26 @@
+import '../skilllink.css';
 import React, { useState, useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
 const createEmojiIcon = (type) => {
-    const emoji = type === 'user' ? '📍' : '🛠️'; 
-    
+    const emoji = type === 'user' ? '📍' : '🛠️';
+
     return L.divIcon({
         className: 'custom-emoji-marker',
         html: `
             <div style="
-                font-size: 30px; 
-                line-height: 1; 
+                font-size: 30px;
+                line-height: 1;
                 filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
                 transform: translate(-50%, -50%); /* Centers the emoji on the location */
             ">
                 ${emoji}
             </div>
         `,
-        iconSize: [0, 0], 
-        iconAnchor: [0, 0], 
+        iconSize: [0, 0],
+        iconAnchor: [0, 0],
     });
 };
 
@@ -55,7 +56,7 @@ function MapInvalidator({ isExpanded }) {
 // --- HELPER: CALCULATE DISTANCE ---
 function getDistance(lat1, lon1, lat2, lon2) {
     if (!lat1 || !lon1 || !lat2 || !lon2) return "N/A";
-    const R = 6371; 
+    const R = 6371;
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a =
@@ -89,7 +90,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
 
     // GET GPS LOCATION
     const handleUseMyLocation = (e) => {
-        e.preventDefault(); 
+        e.preventDefault();
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((position) => {
                 setMyLocation({
@@ -114,23 +115,23 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
 
         const dateObj = new Date(selectedDate);
         const today = new Date();
-        today.setHours(0, 0, 0, 0); 
+        today.setHours(0, 0, 0, 0);
         const inputDate = new Date(dateObj.getUTCFullYear(), dateObj.getUTCMonth(), dateObj.getUTCDate());
-        
+
         if (inputDate < today) {
             setError('You cannot select a date in the past.');
             setDate(selectedDate);
             return;
         }
 
-        const dayIndex = dateObj.getUTCDay(); 
+        const dayIndex = dateObj.getUTCDay();
         const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
         const dayRule = availabilities.find(a => parseInt(a.day_of_week) === dayIndex);
 
         if (!dayRule || !dayRule.is_active) {
             setError(`Repairer is not available on ${dayName}s.`);
             setDate(selectedDate);
-            return; 
+            return;
         }
         setDate(selectedDate);
     };
@@ -150,7 +151,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
 
         const slots = [];
         for (let h = startHour; h < endHour; h++) {
-            if (isToday && h <= currentHour) continue; 
+            if (isToday && h <= currentHour) continue;
             const hourString = h.toString().padStart(2, '0') + ':00';
             slots.push(hourString);
         }
@@ -161,7 +162,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
         const [hour, minute] = time24.split(':');
         const h = parseInt(hour, 10);
         const ampm = h >= 12 ? 'PM' : 'AM';
-        const h12 = h % 12 || 12; 
+        const h12 = h % 12 || 12;
         return `${h12}:${minute} ${ampm}`;
     };
 
@@ -179,34 +180,34 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
     if (!repairer) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-hidden">
+        <div className="skilllink-dialog fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-hidden">
             <div className={`bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-fade-in-up my-auto transition-all duration-500 ease-in-out flex flex-col ${isMapExpanded ? 'h-[90vh]' : 'max-h-[90vh]'}`}>
-                
+
                 {/* --- HEADER WITH MAP --- */}
                 <div className={`relative w-full bg-gray-100 border-b border-gray-200 transition-all duration-500 flex-shrink-0 ${isMapExpanded ? 'h-full flex-grow' : 'h-48'}`}>
-                    
-                    <MapContainer 
-                        center={[myLocation.lat, myLocation.lng]} 
-                        zoom={13} 
+
+                    <MapContainer
+                        center={[myLocation.lat, myLocation.lng]}
+                        zoom={13}
                         style={{ height: '100%', width: '100%' }}
-                        zoomControl={false} 
+                        zoomControl={false}
                         dragging={isMapExpanded}
                         scrollWheelZoom={isMapExpanded}
                         doubleClickZoom={isMapExpanded}
                     >
                         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        
+
                         {/* SER MARKER */}
-                        <Marker 
-                            position={[myLocation.lat, myLocation.lng]} 
-                            icon={createEmojiIcon('user')} 
+                        <Marker
+                            position={[myLocation.lat, myLocation.lng]}
+                            icon={createEmojiIcon('user')}
                         >
                             <Popup>You are here</Popup>
                         </Marker>
-                        
+
                         {/* 3. REPAIRER MARKER*/}
-                        <Marker 
-                            position={[repairerLat, repairerLng]} 
+                        <Marker
+                            position={[repairerLat, repairerLng]}
                             icon={createEmojiIcon('repairer')}
                         >
                             <Popup>
@@ -217,7 +218,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
                                 </div>
                             </Popup>
                         </Marker>
-                        
+
                         <FitBounds markers={[{ position: [myLocation.lat, myLocation.lng] }, { position: [repairerLat, repairerLng] }]} />
                         <MapInvalidator isExpanded={isMapExpanded} />
                     </MapContainer>
@@ -231,7 +232,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
                             <h3 className={`font-bold text-shadow transition-all ${isMapExpanded ? 'text-black text-2xl bg-white/80 backdrop-blur-md px-3 py-1 rounded-lg' : 'text-xl text-white'}`}>
                                 {isMapExpanded ? 'Route View' : 'Request Service'}
                             </h3>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isMapExpanded ? 'bg-black text-white border-black' : 'bg-white/20 backdrop-blur-md text-white border-white/30'}`}>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${isMapExpanded ? 'bg-[#0965e8] text-white border-black' : 'bg-white/20 backdrop-blur-md text-white border-white/30'}`}>
                                 {distance} km away
                             </span>
                         </div>
@@ -244,13 +245,13 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
 
                     {/* MAP CONTROLS */}
                     <div className="absolute top-4 right-16 z-[400] flex gap-2">
-                        <button onClick={handleUseMyLocation} title="Use My Current GPS Location" className="bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 shadow-lg transition animate-pulse">
+                        <button onClick={handleUseMyLocation} title="Use My Current GPS Location" className="bg-[#0965e8] text-white p-2 rounded-full hover:bg-blue-700 shadow-sm transition animate-pulse">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                         </button>
-                        <button onClick={openGoogleMaps} className="bg-white/90 p-2 rounded-full hover:bg-white text-black shadow-lg transition">
+                        <button onClick={openGoogleMaps} className="bg-white/90 p-2 rounded-full hover:bg-white text-black shadow-sm transition">
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
                         </button>
-                        <button onClick={(e) => { e.preventDefault(); setIsMapExpanded(!isMapExpanded); }} className="bg-white/90 p-2 rounded-full hover:bg-black hover:text-white text-black shadow-lg transition">
+                        <button onClick={(e) => { e.preventDefault(); setIsMapExpanded(!isMapExpanded); }} className="bg-white/90 p-2 rounded-full hover:bg-[#0965e8] hover:text-white text-black shadow-sm transition">
                             {isMapExpanded ? (
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                             ) : (
@@ -259,7 +260,7 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
                         </button>
                     </div>
 
-                    <button onClick={onClose} className="absolute top-4 right-4 z-[400] bg-white/90 p-2 rounded-full hover:bg-red-500 hover:text-white text-black shadow-lg transition">
+                    <button onClick={onClose} className="absolute top-4 right-4 z-[400] bg-white/90 p-2 rounded-full hover:bg-red-500 hover:text-white text-black shadow-sm transition">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
@@ -274,14 +275,14 @@ export default function BookingModal({ repairer, user, onClose, onConfirm }) {
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Available Times</label>
-                            {!date ? (<p className="text-sm text-gray-400 italic">Please select a date first.</p>) : availableSlots.length === 0 ? (error ? null : <p className="text-sm text-red-500 italic">No available slots.</p>) : (<div className="grid grid-cols-4 gap-2">{availableSlots.map(slot => (<button key={slot} type="button" onClick={() => setTime(slot)} className={`py-2 rounded-lg text-xs font-bold border transition-all ${time === slot ? 'bg-black text-white border-black transform scale-105' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-50'}`}>{formatTime(slot)}</button>))}</div>)}
+                            {!date ? (<p className="text-sm text-gray-400 italic">Please select a date first.</p>) : availableSlots.length === 0 ? (error ? null : <p className="text-sm text-red-500 italic">No available slots.</p>) : (<div className="grid grid-cols-4 gap-2">{availableSlots.map(slot => (<button key={slot} type="button" onClick={() => setTime(slot)} className={`py-2 rounded-lg text-xs font-bold border transition-all ${time === slot ? 'bg-[#0965e8] text-white border-black transform scale-105' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400 hover:bg-gray-50'}`}>{formatTime(slot)}</button>))}</div>)}
                         </div>
                         <div>
                             <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Problem Description</label>
                             <textarea className="w-full rounded-xl border-gray-200 focus:border-black focus:ring-black text-sm" rows="3" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Describe the issue... (e.g. leaking pipe under sink)"></textarea>
                         </div>
                         <div className="pt-2">
-                            <button type="submit" disabled={!date || !time || !!error} className="w-full py-4 bg-black text-white font-bold text-lg rounded-xl shadow-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"><span>Send Request</span><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></button>
+                            <button type="submit" disabled={!date || !time || !!error} className="w-full py-4 bg-[#0965e8] text-white font-bold text-lg rounded-xl shadow-sm hover:bg-[#0753be] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"><span>Send Request</span><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg></button>
                         </div>
                     </form>
                 )}
