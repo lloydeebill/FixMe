@@ -9,6 +9,9 @@ use App\Models\RepairerProfile;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\Conversation;
+use App\Models\Skill;
+use App\Models\UserNotification;
+use App\Services\GeoDistance;
 
 class DashboardController extends Controller
 {
@@ -43,21 +46,48 @@ class DashboardController extends Controller
             }
 
             // REPAIRER JOBS LOGIC
-            $jobs = Booking::with(['customer.location'])
+            $providerLocation = $user->repairerProfile->location;
+            $jobs = Booking::with(['customer'])
                 ->where('repairer_profile_id', $user->repairerProfile->id)
                 ->latest()
                 ->get()
-                ->map(function ($job) {
+                ->map(function ($job) use ($providerLocation) {
+                    $locationVisible = in_array($job->status, ['pending', 'confirmed', 'in_progress', 'completion_requested', 'completion_disputed', 'completed'], true);
+                    $distanceKm = $locationVisible ? GeoDistance::between(
+                        $job->job_latitude === null ? null : (float) $job->job_latitude,
+                        $job->job_longitude === null ? null : (float) $job->job_longitude,
+                        $providerLocation?->latitude === null ? null : (float) $providerLocation->latitude,
+                        $providerLocation?->longitude === null ? null : (float) $providerLocation->longitude,
+                    ) : null;
                     return [
                         'id' => $job->id,
                         'status' => $job->status,
                         'service_type' => $job->service_type,
                         'scheduled_at' => $job->scheduled_at,
+                        'updated_at' => $job->updated_at,
                         'problem_description' => $job->problem_description,
                         'price' => $job->price ?? null,
-                        'latitude'  => $job->customer->location->latitude ?? null,
-                        'longitude' => $job->customer->location->longitude ?? null,
-                        'customer' => $job->customer,
+                        ...($locationVisible ? [
+                            'latitude' => $job->job_latitude,
+                            'longitude' => $job->job_longitude,
+                            'service_location' => [
+                                'address' => $job->location_snapshot,
+                                'latitude' => $job->job_latitude,
+                                'longitude' => $job->job_longitude,
+                            ],
+                            'provider_location' => [
+                                'address' => $providerLocation?->address,
+                                'latitude' => $providerLocation?->latitude,
+                                'longitude' => $providerLocation?->longitude,
+                            ],
+                            'distance_km' => $distanceKm === null ? null : round($distanceKm, 1),
+                        ] : []),
+                        'customer' => ['name' => $job->customer?->name],
+                        'completion_issue_reason' => $job->completion_issue_reason,
+                        'client_accepted_at' => $job->client_accepted_at,
+                        'payment_method' => $job->payment_method,
+                        'client_payment_reported_at' => $job->client_payment_reported_at,
+                        'provider_payment_confirmed_at' => $job->provider_payment_confirmed_at,
                     ];
                 });
 
@@ -80,9 +110,8 @@ class DashboardController extends Controller
         if ($nextBooking) {
             $date = \Carbon\Carbon::parse($nextBooking->scheduled_at);
 
-            $repairerName = $nextBooking->repairerProfile->business_name
-                ?? $nextBooking->repairerProfile->user->name
-                ?? 'Repairer';
+            $repairerName = $nextBooking->repairerProfile?->business_name
+                ?: $nextBooking->repairerProfile?->user?->name;
 
             $appointment = [
                 'exists' => true,
@@ -96,7 +125,7 @@ class DashboardController extends Controller
             ];
         }
 
-        $topServices = RepairerProfile::with(['user.location', 'location', 'availabilities', 'skills'])
+        $topServices = RepairerProfile::with(['user', 'location', 'availabilities', 'skills'])
             ->where('user_id', '!=', $user->user_id)
             ->latest()
             ->take(6)
@@ -108,7 +137,7 @@ class DashboardController extends Controller
                 return [
                     'id' => $profile->user->user_id,
                     'name' => $displayName,
-                    'location' => $profile->location ?? $profile->user->location,
+                    'location' => $profile->location,
                     'role' => $mainSkill,
                     'rating' => $profile->rating,
                     'image' => 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($displayName),
@@ -132,9 +161,15 @@ class DashboardController extends Controller
             ->orderBy('scheduled_at', 'desc')
             ->get();
 
-        // 2. FETCH CONVERSATIONS (Only Confirmed or Completed)
+        $completionJobs = Booking::where('customer_id', $user->user_id)
+            ->whereIn('status', ['completion_requested', 'completion_disputed'])
+            ->with('repairerProfile')
+            ->latest()
+            ->get();
+
+        // Conversation order follows the latest actual message, not booking creation.
         $conversations = Booking::with(['conversation.messages' => function ($query) {
-            $query->latest()->limit(1);
+            $query->orderByDesc('created_at')->orderByDesc('id')->limit(1);
         }, 'customer', 'repairerProfile.user'])
 
 
@@ -146,7 +181,6 @@ class DashboardController extends Controller
                         $q2->where('user_id', $user->user_id);
                     });
             })
-            ->latest()
             ->get()
             ->map(function ($booking) use ($user) {
                 $isMeCustomer = $booking->customer_id === $user->user_id;
@@ -167,11 +201,38 @@ class DashboardController extends Controller
                     'booking_id' => $booking->id,
                     'other_user_name' => $otherUserName,
                     'service_type' => $booking->service_type,
-                    'last_message_content' => $lastMsg ? $lastMsg->content : 'Booking confirmed. Tap to chat!',
-                    'last_message_time' => $lastMsg ? $lastMsg->created_at->diffForHumans() : $booking->created_at->diffForHumans(),
-                    'unread_count' => 0,
+                    'last_message_content' => $lastMsg?->content,
+                    'last_message_time' => $lastMsg?->created_at?->diffForHumans(),
+                    'last_message_at' => $lastMsg?->created_at?->toISOString(),
+                    'last_message_id' => $lastMsg?->id,
                 ];
-            });
+            })
+            ->sort(function ($a, $b) {
+                $byTime = strcmp($b['last_message_at'] ?? '', $a['last_message_at'] ?? '');
+                return $byTime ?: (($b['last_message_id'] ?? 0) <=> ($a['last_message_id'] ?? 0));
+            })->values();
+
+        $notificationQuery = UserNotification::where('user_id', $user->user_id);
+        $unreadNotificationsCount = (clone $notificationQuery)->whereNull('read_at')->count();
+        $notifications = $notificationQuery->with('booking:id,repairer_profile_id,service_type,problem_description')
+            ->orderByDesc('created_at')->orderByDesc('id')->limit(50)->get()
+            ->map(fn ($notice) => [
+                'id' => $notice->id,
+                'type' => $notice->type,
+                'service_type' => $notice->booking?->service_type,
+                'job_description' => $notice->type === 'booking_requested'
+                    && $notice->booking?->repairer_profile_id === $user->repairerProfile?->id
+                    ? $notice->booking->problem_description : null,
+                'created_at' => $notice->created_at->toISOString(),
+                'time' => $notice->created_at->diffForHumans(),
+                'read' => (bool) $notice->read_at,
+            ]);
+
+        $jobCounts = [
+            'pending' => collect($jobs)->where('status', 'pending')->count(),
+            'active' => collect($jobs)->whereIn('status', ['confirmed', 'in_progress', 'completion_requested', 'completion_disputed'])->count(),
+            'completed' => collect($jobs)->where('status', 'completed')->count(),
+        ];
 
         return Inertia::render('Dashboard', [
             'auth' => ['user' => $user],
@@ -181,7 +242,6 @@ class DashboardController extends Controller
             'repairers' => User::where('user_id', '!=', Auth::id())
                 ->has('repairerProfile')
                 ->with([
-                    'location',
                     'repairerProfile.location',
                     'repairerProfile.skills',
                     'repairerProfile.availabilities'
@@ -196,10 +256,15 @@ class DashboardController extends Controller
             'quickAccess' => $quickAccess,
             'topServices' => $topServices,
             'conversations' => $conversations,
+            'notifications' => $notifications,
+            'unreadNotificationsCount' => $unreadNotificationsCount,
+            'jobCounts' => $jobCounts,
             'history' => $history,
+            'completionJobs' => $completionJobs,
 
             'appointment' => $appointment ? $appointment : ['exists' => false],
             'repairerReviews' => $repairerReviews ?? [],
+            'serviceCategories' => Skill::catalog()->get(['id', 'name', 'slug', 'service_group', 'description', 'search_terms']),
         ]);
     }
 }

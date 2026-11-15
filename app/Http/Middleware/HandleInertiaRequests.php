@@ -35,6 +35,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'pilotAreas' => config('pilot_areas.areas'),
             // We can also share flash messages for errors/success later
             'flash' => [
                 'message' => fn() => $request->session()->get('message'),

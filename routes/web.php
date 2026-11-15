@@ -14,12 +14,20 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Middleware\EnsureOnboardingComplete;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BookingWorkflowController;
+use App\Http\Controllers\ProviderGcashQrController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RepairerAvailabilityController;
 use App\Http\Controllers\GoogleCalendarController;
 use App\Models\Conversation;
 use App\Models\Booking;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\TesdaQualificationController;
+use App\Http\Controllers\Api\GeminiController;
+use App\Http\Controllers\AccountProfileController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProviderSuggestionController;
+use App\Models\Skill;
 
 // -----------------------------------------------------------
 // 1. PUBLIC FACING PAGES
@@ -88,19 +96,51 @@ Route::middleware(['auth'])->group(function () {
   // -----------------------------------------------------------
   Route::middleware([EnsureOnboardingComplete::class])->group(function () {
 
+    Route::post('/api/scan-problem', [GeminiController::class, 'scan'])->middleware('throttle:10,1');
+    Route::post('/api/plan-project', [GeminiController::class, 'plan'])->middleware('throttle:10,1');
+
     // --- DASHBOARD ---
     Route::get('/app', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/provider-suggestions', [ProviderSuggestionController::class, 'index'])->middleware('throttle:60,1')->name('provider-suggestions.index');
+    Route::post('/notifications/{notification}/open', [NotificationController::class, 'open'])->name('notifications.open');
 
     // --- BOOKINGS ---
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::post('/bookings/{id}/approve', [BookingController::class, 'approve'])->name('bookings.approve');
     Route::post('/bookings/{id}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
     Route::post('/bookings/{id}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
+    Route::get('/bookings/{id}', [BookingWorkflowController::class, 'show'])->name('bookings.show');
+    Route::post('/bookings/{id}/accept-completion', [BookingWorkflowController::class, 'accept']);
+    Route::post('/bookings/{id}/report-issue', [BookingWorkflowController::class, 'dispute']);
+    Route::post('/bookings/{id}/payment-method', [BookingWorkflowController::class, 'choosePayment']);
+    Route::post('/bookings/{id}/report-payment', [BookingWorkflowController::class, 'reportPayment']);
+    Route::post('/bookings/{id}/confirm-payment', [BookingWorkflowController::class, 'confirmPayment']);
+    Route::get('/bookings/{id}/gcash-qr', [BookingWorkflowController::class, 'qrImage']);
 
     // --- SETTINGS ---
-    Route::get('/settings', function () {
-      return Inertia::render('Settings');
+    Route::get('/settings', function (Request $request) {
+      return Inertia::render('Settings', [
+        'hasGcashQr' => (bool) $request->user()->repairerProfile?->gcash_qr_path,
+        'accountLocation' => $request->user()->location,
+        'providerProfile' => $request->user()->repairerProfile?->load(['location', 'skills']),
+        'availableSkills' => Skill::catalog()->get(['id', 'name', 'slug', 'service_group', 'description', 'is_active'])
+          ->concat($request->user()->repairerProfile?->skills ?? collect())
+          ->unique('id')->values(),
+      ]);
     })->name('settings');
+    Route::put('/settings/profile', [AccountProfileController::class, 'updateClient']);
+    Route::put('/settings/provider-profile', [AccountProfileController::class, 'updateProvider']);
+    Route::post('/provider/gcash-qr', [ProviderGcashQrController::class, 'store']);
+    Route::delete('/provider/gcash-qr', [ProviderGcashQrController::class, 'destroy']);
+    Route::get('/provider/gcash-qr/image', [ProviderGcashQrController::class, 'image']);
+
+    Route::prefix('provider/tesda-qualifications')->name('tesda.')->group(function () {
+      Route::get('/', [TesdaQualificationController::class, 'index'])->name('index');
+      Route::post('/', [TesdaQualificationController::class, 'store'])->middleware('throttle:10,1')->name('store');
+      Route::get('/{qualification}/image', [TesdaQualificationController::class, 'image'])->name('image');
+      Route::post('/{qualification}/retry', [TesdaQualificationController::class, 'retry'])->middleware('throttle:10,1')->name('retry');
+      Route::delete('/{qualification}', [TesdaQualificationController::class, 'destroy'])->name('destroy');
+    });
 
     // --- REPAIRER UPGRADE (For existing customers) ---
     // This is the "Become a Repairer" button for someone who is ALREADY a customer.
@@ -137,6 +177,8 @@ Route::middleware(['auth'])->group(function () {
     // Note: We define these in web.php so they share the user session automatically
     Route::post('/api/messages/{bookingId}', [ChatController::class, 'sendMessage'])->name('chat.send');
     Route::get('/api/messages/{bookingId}', [ChatController::class, 'fetchMessages'])->name('chat.fetch');
+    Route::post('/api/bookings/{bookingId}/messages', [ChatController::class, 'sendMessage']);
+    Route::get('/api/bookings/{bookingId}/messages', [ChatController::class, 'fetchMessages']);
 
     Route::post('/bookings/{id}/review', [BookingController::class, 'storeReview'])->name('bookings.review');
   });

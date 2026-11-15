@@ -24,7 +24,13 @@ class RepairerProfile extends Model
         'bio',
         'rating',
         'clients_helped',
+        'gcash_qr_path',
+        'service_areas',
     ];
+
+    protected $casts = ['service_areas' => 'array'];
+
+    protected $hidden = ['gcash_qr_path'];
 
     /**
      * Get the User that owns the RepairerProfile.
@@ -68,5 +74,10 @@ class RepairerProfile extends Model
     public function availabilities(): HasMany
     {
         return $this->hasMany(RepairerAvailability::class, 'repairer_profile_id');
+    }
+
+    public function tesdaQualifications(): HasMany
+    {
+        return $this->hasMany(TesdaQualification::class);
     }
 }

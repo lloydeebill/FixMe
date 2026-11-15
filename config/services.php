@@ -43,6 +43,7 @@ return [
 
     'gemini' => [
         'key' => env('GEMINI_API_KEY'),
+        'certificate_model' => env('GEMINI_CERTIFICATE_MODEL', 'gemini-2.5-flash'),
     ],
 
 

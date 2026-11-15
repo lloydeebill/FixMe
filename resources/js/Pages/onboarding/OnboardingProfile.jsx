@@ -1,20 +1,21 @@
+import '../../skilllink.css';
 import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import RepairerFormFields from '@/Components/RepairerFormFields';
-import LocationPicker from '@/Components/LocationPicker'; 
+import LocationPicker from '@/Components/LocationPicker';
 
 export default function OnboardingProfile({ auth, availableSkills }) {
     const [step, setStep] = useState(1);
-    
+
     const { data, setData, post, processing, errors } = useForm({
         // Basics
         name: auth.user.name || '',
         gender: '',
-        location: '', 
-        latitude: null, 
+        location: '',
+        latitude: null,
         longitude: null,
         date_of_birth: '',
-        
+
         // Logic
         is_repairer: false,
 
@@ -59,7 +60,7 @@ export default function OnboardingProfile({ auth, availableSkills }) {
 
     const handleFinalSubmit = (e) => {
     e.preventDefault();
-    
+
     // Check if skills are selected (optional, but good practice)
     if (data.skills.length === 0) {
         alert("Please select at least one skill.");
@@ -69,8 +70,8 @@ export default function OnboardingProfile({ auth, availableSkills }) {
     post('/onboarding/complete', {
         // Adding onSuccess confirms the client side sees the successful response.
         onSuccess: () => {
-             // If a redirect is successful, this code is usually skipped, 
-             // but if the backend sends a 200 response with a new page, 
+             // If a redirect is successful, this code is usually skipped,
+             // but if the backend sends a 200 response with a new page,
              // it should handle it. Since we expect a redirect, this is mainly for debugging.
              console.log("Submission successful, redirecting...");
         },
@@ -86,45 +87,45 @@ export default function OnboardingProfile({ auth, availableSkills }) {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 font-sans">
-            <Head title="Welcome to FixMe" />
+        <div className="skilllink-screen min-h-screen flex flex-col items-center justify-center bg-gray-50 py-12 px-4 font-sans">
+            <Head title="Welcome to SkillLink" />
 
             {/* PROGRESS INDICATOR */}
             <div className="mb-8 flex items-center space-x-2 text-sm font-medium text-gray-400">
-                <span className={step >= 1 ? "text-blue-600" : ""}>Role</span>
+                <span className={step >= 1 ? "text-[#0965e8]" : ""}>Role</span>
                 <span>&rarr;</span>
-                <span className={step >= 2 ? "text-blue-600" : ""}>Personal</span>
+                <span className={step >= 2 ? "text-[#0965e8]" : ""}>Personal</span>
                 {data.is_repairer && (
                     <>
                         <span>&rarr;</span>
-                        <span className={step === 3 ? "text-blue-600" : ""}>Business</span>
+                        <span className={step === 3 ? "text-[#0965e8]" : ""}>Business</span>
                     </>
                 )}
             </div>
 
             <div className="max-w-3xl w-full">
-                
+
                 {/* STEP 1: ROLE SELECTION */}
                 {step === 1 && (
                     <div className="space-y-8 text-center animate-fade-in-up">
                         <div>
-                            <h1 className="text-3xl font-extrabold text-gray-900">How do you want to use FixMe?</h1>
+                            <h1 className="text-3xl font-extrabold text-gray-900">How do you want to use SkillLink?</h1>
                             <p className="mt-2 text-gray-500">Choose your primary goal to get started.</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                            <button onClick={() => selectRole('customer')} className="group relative flex flex-col items-center p-8 bg-white border-2 border-gray-200 rounded-2xl hover:border-blue-500 hover:shadow-xl transition-all duration-300">
+                            <button onClick={() => selectRole('customer')} className="group relative flex flex-col items-center p-5 sm:p-8 bg-white border-2 border-gray-200 rounded-2xl hover:border-blue-500 hover:shadow-sm transition-all duration-300">
                                 <div className="h-20 w-20 bg-blue-100 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                    <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                                    <svg className="w-10 h-10 text-[#0965e8]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600">Find a Service</h3>
+                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-[#0965e8]">Find a Service</h3>
                             </button>
 
-                            <button onClick={() => selectRole('repairer')} className="group relative flex flex-col items-center p-8 bg-white border-2 border-gray-200 rounded-2xl hover:border-green-500 hover:shadow-xl transition-all duration-300">
-                                <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                    <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            <button onClick={() => selectRole('repairer')} className="group relative flex flex-col items-center p-5 sm:p-8 bg-white border-2 border-gray-200 rounded-2xl hover:border-blue-500 hover:shadow-sm transition-all duration-300">
+                                <div className="h-20 w-20 bg-blue-100 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                    <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-green-600">Offer Services</h3>
+                                <h3 className="text-xl font-bold text-gray-900 group-hover:text-blue-600">Offer Services</h3>
                             </button>
                         </div>
                     </div>
@@ -132,7 +133,7 @@ export default function OnboardingProfile({ auth, availableSkills }) {
 
                 {/* STEP 2: BASIC INFO */}
                 {step === 2 && (
-                    <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 animate-fade-in-right max-w-lg mx-auto">
+                    <div className="bg-white p-5 sm:p-8 rounded-xl shadow-sm border border-gray-100 animate-fade-in-right max-w-lg mx-auto">
                         <div className="mb-6">
                             <button onClick={goBack} className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center">
                                 &larr; Back to Role Selection
@@ -182,19 +183,19 @@ export default function OnboardingProfile({ auth, availableSkills }) {
                                     {errors.gender && <p className="text-red-500 text-xs mt-1">{errors.gender}</p>}
                                 </div>
 
-                               
+
                             </div>
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                                    
+
                                     {/* 1. MAP PICKER COMPONENT */}
-                                    <LocationPicker 
+                                    <LocationPicker
                                         initialLat={data.latitude}
                                         initialLng={data.longitude}
                                         onLocationChange={handleLocationChange}
                                     />
-                                    
+
                                     {/* 2. READ-ONLY ADDRESS DISPLAY */}
                                     <input
                                         type="text"
@@ -203,7 +204,7 @@ export default function OnboardingProfile({ auth, availableSkills }) {
                                         className="mt-2 block w-full rounded-lg border-gray-300 shadow-sm bg-gray-100 text-gray-600 text-xs"
                                         placeholder="Location address will appear here..."
                                     />
-                                    
+
                                     {errors.location && <p className="text-red-500 text-xs mt-1">{errors.location}</p>}
                                 </div>
 
@@ -211,7 +212,7 @@ export default function OnboardingProfile({ auth, availableSkills }) {
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className={`w-full py-3 px-4 text-white font-bold rounded-lg shadow-md transition-transform transform active:scale-95 disabled:opacity-50 ${data.is_repairer ? 'bg-gray-800 hover:bg-gray-900' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                    className={`w-full py-3 px-4 text-white font-bold rounded-lg shadow-sm transition-transform transform active:scale-95 disabled:opacity-50 ${data.is_repairer ? 'bg-[#0965e8] hover:bg-[#0753be]' : 'bg-[#0965e8] hover:bg-blue-700'}`}
                                 >
                                     {data.is_repairer ? 'Next' : 'Finish Setup'}
                                 </button>
@@ -222,7 +223,7 @@ export default function OnboardingProfile({ auth, availableSkills }) {
 
                 {/* STEP 3: BUSINESS INFO */}
                 {step === 3 && data.is_repairer && (
-                    <div className="bg-white p-8 rounded-xl shadow-lg border border-gray-100 animate-fade-in-right max-w-lg mx-auto">
+                    <div className="bg-white p-5 sm:p-8 rounded-xl shadow-sm border border-gray-100 animate-fade-in-right max-w-lg mx-auto">
                         <div className="mb-6">
                             <button onClick={goBack} className="text-sm text-gray-400 hover:text-gray-600 mb-4 flex items-center">
                                 &larr; Back to Personal Details
@@ -231,15 +232,15 @@ export default function OnboardingProfile({ auth, availableSkills }) {
                         </div>
 
                         <form onSubmit={handleFinalSubmit} className="space-y-5">
-                            <RepairerFormFields 
-                                data={data} 
-                                setData={setData} 
-                                errors={errors} 
+                            <RepairerFormFields
+                                data={data}
+                                setData={setData}
+                                errors={errors}
                                 availableSkills={availableSkills}
                             />
 
                             <div className="pt-4">
-                                <button type="submit" className="w-full py-3 bg-black text-white font-bold rounded-lg">
+                                <button type="submit" className="w-full py-3 bg-[#0965e8] text-white font-bold rounded-lg">
                                     Complete Registration
                                 </button>
                             </div>

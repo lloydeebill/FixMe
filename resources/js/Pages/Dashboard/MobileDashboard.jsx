@@ -1,803 +1,330 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Head, router } from '@inertiajs/react';
+import React, { useState, useEffect, useRef } from 'react';
+import { router } from '@inertiajs/react';
+import { FiArrowLeft, FiArrowRight, FiBell, FiBriefcase, FiCamera, FiCheckCircle, FiChevronRight, FiClock, FiGrid, FiHome, FiLogOut, FiMapPin, FiMessageCircle, FiSearch, FiSettings, FiStar, FiTool, FiUser, FiX } from 'react-icons/fi';
 import ReviewModal from '../../Components/ReviewModal';
 import ProblemScanner from '../../Components/ProblemScanner';
 import ProjectPlanner from '../../Components/ProjectPlanner';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import styles from './MobileDashboard.module.css';
+import { groupIcons, categoryIcons } from './ServiceCatalog';
+import { filterProvidersBySearch, groupCategories, searchCategories } from './catalog';
+import { aiServiceDestination } from './aiCategory';
+import ProviderLocationMap from './ProviderLocationMap';
+import useMobileTab from './useMobileTab';
+import NotificationsView from './NotificationsView';
+import JobContextFields from './JobContextFields';
 
+const initials = name => String(name || '').trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'S';
 
-/* ─────────────────────────────────────────────────────────────
-   LIQUID GLASS — FixMe. Mobile Dashboard (warm earth-tone palette)
-   visionOS / macOS Sonoma aesthetic adapted for responsive mobile
-───────────────────────────────────────────────────────────── */
+function EmptyState({ icon: Icon, title, children, action }) {
+    return <div className={styles.empty}>
+        <span className={styles.emptyIcon}><Icon aria-hidden="true" /></span>
+        <h3>{title}</h3><p>{children}</p>{action}
+    </div>;
+}
 
-const GlobalStyles = () => (
-    <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
-
-        *, *::before, *::after { box-sizing: border-box; }
-
-        :root {
-            --coffee:      #3b2314;
-            --espresso:    #5d3a1a;
-            --mocha:       #7c5230;
-            --caramel:     #b07d4a;
-            --latte:       #c8a97a;
-            --cream:       #f5ede0;
-            --parchment:   #faf6f0;
-            --white:       #ffffff;
-
-            /* Glass surfaces */
-            --glass-bg:          rgba(255,248,238,0.60);
-            --glass-bg-dark:     rgba(59,35,20,0.82);
-            --glass-border:      rgba(255,255,255,0.65);
-            --glass-shadow:      0 8px 32px rgba(59,35,20,0.08), 0 2px 8px rgba(59,35,20,0.04);
-            --glass-shadow-lg:   0 16px 40px rgba(59,35,20,0.15), 0 4px 12px rgba(59,35,20,0.08);
-
-            --blur-sm: blur(12px);
-            --blur-md: blur(24px);
-            --blur-lg: blur(40px);
-        }
-
-        body {
-            font-family: 'Sora', sans-serif;
-            background: var(--parchment);
-            margin: 0; padding: 0;
-        }
-
-        /* Ambient background */
-        .fixme-bg {
-            position: fixed; inset: 0; z-index: 0;
-            background:
-                radial-gradient(ellipse 90% 40% at 20% 5%,   rgba(180,120,60,0.18) 0%, transparent 50%),
-                radial-gradient(ellipse 70% 50% at 80% 90%,   rgba(92,50,20,0.12)  0%, transparent 50%),
-                radial-gradient(ellipse 60% 40% at 50% 40%,   rgba(200,169,122,0.08) 0%, transparent 50%),
-                linear-gradient(160deg, #faf6f0 0%, #f3e8d4 60%, #ebdcb9 100%);
-            overflow: hidden;
-        }
-        .fixme-bg::before {
-            content: '';
-            position: absolute; inset: 0;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-            opacity: 0.6;
-        }
-
-        /* Glass surfaces */
-        .glass {
-            background: var(--glass-bg);
-            backdrop-filter: var(--blur-sm);
-            -webkit-backdrop-filter: var(--blur-sm);
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--glass-shadow);
-        }
-        .glass-dark {
-            background: var(--glass-bg-dark);
-            backdrop-filter: var(--blur-md);
-            -webkit-backdrop-filter: var(--blur-md);
-            border: 1px solid rgba(255,255,255,0.15);
-            box-shadow: var(--glass-shadow-lg);
-        }
-        
-        .glass-edge {
-            position: relative;
-            overflow: hidden;
-        }
-        .glass-edge::after {
-            content: '';
-            position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.30) 0%, transparent 40%, transparent 60%, rgba(255,255,255,0.08) 100%);
-            pointer-events: none; border-radius: inherit;
-        }
-
-        /* Hero / Header layout elements */
-        .hero-mobile {
-            border-radius: 0 0 32px 32px;
-            padding: 30px 24px 20px; 
-            color: white;
-            position: relative;
-            overflow: hidden;
-        }
-        .hero-mobile::before {
-            content: '';
-            position: absolute; top: -40px; right: -40px;
-            width: 180px; height: 180px;
-            background: radial-gradient(circle, rgba(200,169,122,0.25) 0%, transparent 70%);
-            pointer-events: none;
-        }
-
-        /* Inline Components */
-        .logo-text {
-            font-family: 'DM Serif Display', serif;
-            font-size: 22px;
-            color: var(--espresso);
-            letter-spacing: -0.3px;
-        }
-        .logo-dot { color: var(--caramel); }
-
-        .section-title {
-            font-size: 14px; font-weight: 700;
-            color: var(--espresso);
-            display: flex; align-items: center; gap: 8px;
-            letter-spacing: -0.2px;
-        }
-        .section-badge {
-            width: 26px; height: 26px; border-radius: 8px;
-            background: rgba(176,125,74,0.12);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 12px;
-        }
-
-        /* ✨ AI SMART UTILITY HUB GRID */
-       /* ✨ AI SMART UTILITY HUB GRID */
-        .ai-grid-btn {
-            background: rgba(255, 252, 245, 0.65);
-            backdrop-filter: var(--blur-sm);
-            -webkit-backdrop-filter: var(--blur-sm);
-            border: 1px solid rgba(176, 125, 74, 0.35);
-            border-radius: 20px;
-            
-            /* 👇 Make the cards taller and perfectly centered */
-            aspect-ratio: 1 / 1;
-            padding: 20px 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 12px; 
-            
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 14px rgba(59,35,20,0.05), inset 0 1px 0 rgba(255,255,255,0.6);
-            transition: transform 0.2s cubic-bezier(.25,1,.32,1), background-color 0.2s ease, box-shadow 0.2s ease;
-        }
-        .ai-grid-btn::after {
-            content: '';
-            position: absolute; inset: 0;
-            background: linear-gradient(135deg, rgba(200,169,122,0.15) 0%, transparent 60%);
-            pointer-events: none;
-        }
-        .ai-grid-btn:active {
-            transform: scale(0.95);
-            background: rgba(255, 248, 238, 0.90);
-            box-shadow: 0 2px 6px rgba(59,35,20,0.03);
-        }
-        
-        /* 👇 Slightly larger icon circle to match the bigger card */
-        .ai-icon-circle {
-            width: 50px; height: 50px; 
-            border-radius: 16px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 24px; 
-            background: linear-gradient(135deg, rgba(245,237,224,0.90) 0%, rgba(210,180,140,0.40) 100%);
-            border: 1px solid rgba(255,255,255,0.80);
-            box-shadow: 0 2px 8px rgba(176,125,74,0.10);
-        }
-
-        /* 📂 BEAUTIFIED 2x2 CATEGORY TILES */
-        .cat-tile {
-            border-radius: 18px;                       
-            padding: 14px 10px;                     
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            gap: 8px; 
-            background: rgba(255,255,255,0.45);
-            border: 1px solid rgba(255,255,255,0.7);
-            box-shadow: 0 4px 12px rgba(59,35,20,0.04); 
-            transition: transform 0.2s cubic-bezier(.25,1,.32,1), background-color 0.2s ease;
-        }
-        .cat-tile:active {
-            transform: scale(0.96);
-            background: rgba(255,255,255,0.8);
-        }
-        .cat-icon-wrap {
-            width: 38px; height: 38px;                
-            border-radius: 12px;                       
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px;                          
-            position: relative;
-            box-shadow: 0 2px 6px rgba(59,35,20,0.04);
-        }
-        .cat-icon-wrap::after {
-            content: ''; position: absolute; inset: 0; border-radius: inherit;
-            background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 60%);
-        }
-
-        .star-badge {
-            display: flex; align-items: center; gap: 3px;
-            background: rgba(245,237,224,0.85);
-            border: 1px solid rgba(176,125,74,0.25);
-            border-radius: 8px; padding: 3px 8px;
-            font-size: 11px; font-weight: 700; color: var(--espresso);
-        }
-
-        .btn-dark {
-            background: linear-gradient(135deg, var(--coffee) 0%, var(--espresso) 100%);
-            color: white; border: none; border-radius: 16px;
-            font-weight: 700; font-size: 13px;
-            padding: 12px 24px; width: 100%; transition: opacity 0.2s;
-            box-shadow: 0 4px 14px rgba(59,35,20,0.25);
-        }
-        .btn-dark:active { opacity: 0.85; }
-
-        .btn-caramel {
-            background: linear-gradient(135deg, var(--caramel) 0%, var(--mocha) 100%);
-            color: white; border: none; border-radius: 14px;
-            font-weight: 700; font-size: 12px; padding: 10px 20px;
-            box-shadow: 0 4px 12px rgba(124,82,48,0.2);
-        }
-        .btn-caramel:active { opacity: 0.85; }
-
-        .skill-chip {
-            background: rgba(255,248,238,0.75);
-            border: 1px solid rgba(176,125,74,0.2);
-            border-radius: 8px; padding: 3px 10px;
-            font-size: 10px; font-weight: 600; color: var(--mocha);
-        }
-
-        .list-row {
-            display: flex; align-items: center; gap: 14px;
-            padding: 14px 16px; border-radius: 20px;
-            background: rgba(255,248,238,0.6);
-            border: 1px solid rgba(255,255,255,0.7);
-            box-shadow: 0 2px 8px rgba(59,35,20,0.03);
-            transition: transform 0.2s ease;
-        }
-        .list-row:active { transform: scale(0.98); }
-
-        .empty-state {
-            text-align: center; padding: 48px 20px; border-radius: 20px;
-            background: rgba(255,248,238,0.4);
-            border: 1.5px dashed rgba(176,125,74,0.25);
-        }
-
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Animations */
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-slide-up { animation: slideUp 0.4s cubic-bezier(.25,1,.32,1) both; }
-        
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    `}</style>
-);
-
-const CAT_COLORS = [
-    { bg: 'rgba(176,125,74,0.15)',  emoji: '🔧' },
-    { bg: 'rgba(100,160,120,0.15)', emoji: '⚡' },
-    { bg: 'rgba(180,140,80,0.15)',  emoji: '🪚' },
-    { bg: 'rgba(150,110,180,0.15)', emoji: '🔌' },
-    { bg: 'rgba(80,160,200,0.15)',  emoji: '❄️' },
-    { bg: 'rgba(200,120,80,0.15)',  emoji: '🧱' },
-    { bg: 'rgba(100,180,160,0.15)', emoji: '🎨' },
-    { bg: 'rgba(200,170,100,0.15)', emoji: '🧹' },
-];
-
+function ProviderCard({ provider, onSelect }) {
+    const profile = provider.repairer_profile;
+    const name = profile?.business_name || provider.name || 'Service provider';
+    const address = profile?.location?.address;
+    const rating = Number(profile?.rating);
+    return <article className={styles.provider}>
+        <div className={styles.providerTop}>
+            <span className={styles.avatar} aria-hidden="true">{initials(name)}</span>
+            <div className={styles.providerIdentity}>
+                <h3>{name}</h3>
+                <p><FiMapPin aria-hidden="true" />{address || 'Location not provided'}</p>
+            </div>
+        </div>
+        {!!profile?.skills?.length && <div className={styles.skills}>
+            {profile.skills.slice(0, 3).map(skill => <span key={skill.id}>{skill.name}</span>)}
+        </div>}
+        {provider.suggestion && <p className={styles.suggestionReason}>Service match · {provider.suggestion.distance_km === null ? 'Distance unavailable' : `about ${provider.suggestion.distance_km} km straight-line`} · {provider.suggestion.availability === 'not_checked' ? 'Availability not assessed' : provider.suggestion.availability === 'available' ? 'Available at selected time' : 'Unavailable at selected time'}</p>}
+        <div className={styles.providerFooter}>
+            {rating > 0 ? <span className={styles.rating}><FiStar aria-hidden="true" />{rating.toFixed(1)}<span>Rating</span></span> : <span className={styles.muted}>No ratings yet</span>}
+            <button type="button" className={styles.primary} onClick={() => onSelect(provider)} aria-label={`View ${name}`}>View provider <FiArrowRight aria-hidden="true" /></button>
+        </div>
+    </article>;
+}
 
 const MobileDashboard = ({
-    user,
-    appointment,
-    categories = [],
-    selectedCategory,
-    onSelectCategory,
-    repairers = [],
-    onRepairerSelect,
-    topServices = [],
-    onSwitchToWork,
-    history = [],
-    conversations = [],
-    pendingReviewsCount = 0,
+    user, appointment, categories = [], selectedCategory, onSelectCategory,
+    repairers = [], allRepairers = [], onRepairerSelect, onSwitchToWork,
+    pilotAreas = {}, jobContext, onJobContextChange, suggestionsLoading = false, suggestionsError = '',
+    history = [], completionJobs = [], conversations = [], notifications = [], unreadNotificationsCount = 0, onOpenNotification, pendingReviewsCount = 0,
 }) => {
-    const [activeTab, setActiveTab] = useState('home');
+    const [activeTab, setActiveTab, backTo] = useMobileTab('home', { history: 'bookings', upcoming: 'bookings' });
+    const [bookingsView, setBookingsView] = useState(() => new URLSearchParams(window.location.search).get('tab') === 'history' ? 'history' : 'upcoming');
     const [reviewingJob, setReviewingJob] = useState(null);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const pollingRef = useRef(null);
+    const [search, setSearch] = useState('');
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [activeGroup, setActiveGroup] = useState(null);
+    const [selectedProvider, setSelectedProvider] = useState(null);
+    const [providerReturn, setProviderReturn] = useState('services');
+    const searchInputRef = useRef(null);
+    const homeSearchRef = useRef(null);
+    const searchSheetRef = useRef(null);
 
-    // ─── Soft reload (only refreshes props, no full page flash) ───
-    const softReload = useCallback(() => {
-        router.reload({ only: ['conversations', 'history', 'appointment', 'pendingReviewsCount'] });
+    useEffect(() => {
+        const restoreServiceStep = event => {
+            const step = event.state?.skilllinkServiceStep;
+            setActiveGroup(step?.group || null);
+            onSelectCategory(step?.categorySlug ? categories.find(category => category.slug === step.categorySlug) || null : null);
+        };
+        window.addEventListener('popstate', restoreServiceStep);
+        return () => window.removeEventListener('popstate', restoreServiceStep);
+    }, [categories, onSelectCategory]);
+
+    useEffect(() => {
+        const restoreBookingsView = event => setBookingsView(event.state?.skilllinkBookingView || (new URLSearchParams(window.location.search).get('tab') === 'history' ? 'history' : 'upcoming'));
+        window.addEventListener('popstate', restoreBookingsView);
+        return () => window.removeEventListener('popstate', restoreBookingsView);
     }, []);
 
-    // ─── Poll every 8 seconds when on chats or history tab ───
-    useEffect(() => {
-        const INTERVAL = 8000; // 8 seconds
+    const openBookingsView = view => {
+        if (view !== bookingsView) window.history.pushState({ ...window.history.state, skilllinkMobileNavigation: true, skilllinkBookingView: view }, '', window.location.href);
+        setBookingsView(view);
+    };
 
-        if (activeTab === 'chats' || activeTab === 'history') {
-            pollingRef.current = setInterval(softReload, INTERVAL);
-        }
+    const recordServiceStep = (group, category = null) => {
+        window.history.pushState({ ...window.history.state, skilllinkMobileNavigation: true, skilllinkServiceStep: { group, categorySlug: category?.slug || null } }, '', window.location.href);
+    };
+    const selectServiceCategory = category => {
+        onSelectCategory(category);
+        recordServiceStep(activeGroup, category);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
-        return () => {
-            if (pollingRef.current) clearInterval(pollingRef.current);
-        };
-    }, [activeTab, softReload]);
 
     const handleLogout = () => router.post('/logout');
     const handleOpenChat = (bookingId) => router.visit(`/test-chat/${bookingId}`);
 
-    // 
+
     useEffect(() => {
-        if (activeTab === 'chats' || activeTab === 'history') {
-            const id = setInterval(() => {
-                router.reload({ only: ['conversations', 'history', 'appointment', 'pendingReviewsCount'] });
-            }, 8000);
-            return () => clearInterval(id);
-        }
-    }, [activeTab]);
+        if (!searchOpen) return;
+        searchInputRef.current?.focus();
+        const onKeyDown = event => {
+            if (event.key === 'Escape') { closeSearch(); return; }
+            if (event.key !== 'Tab') return;
+            const controls = [...(searchSheetRef.current?.querySelectorAll('button:not(:disabled), input:not(:disabled)') || [])];
+            if (!controls.length) return;
+            const first = controls[0];
+            const last = controls[controls.length - 1];
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        };
+        const onBack = () => setSearchOpen(false);
+        window.addEventListener('keydown', onKeyDown);
+        window.addEventListener('popstate', onBack);
+        return () => {
+            window.removeEventListener('keydown', onKeyDown);
+            window.removeEventListener('popstate', onBack);
+        };
+    }, [searchOpen]);
 
-    const handleBookingSuccess = useCallback((newBooking) => {
-        // Immediately switch to history tab so user sees it
-        setActiveTab('history');
-        // Then reload to get the real server state
-        router.reload({ only: ['history', 'appointment', 'pendingReviewsCount'] });
-    }, []);
-
-    const scrollToTop = () => {
+    const goHome = () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         onSelectCategory(null);
-        setActiveTab('home'); 
+        setActiveGroup(null);
+        setSelectedProvider(null);
+        setSearch('');
+        setActiveTab('home');
     };
+    const findProviders = () => {
+        setActiveTab('services');
+        setActiveGroup(null);
+        onSelectCategory(null);
+        setSearch('');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    const openGroup = group => {
+        setActiveGroup(group);
+        onSelectCategory(null);
+        setActiveTab('services');
+        recordServiceStep(group);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    const openAiProviders = category => {
+        const destination = aiServiceDestination(categories, category);
+        if (!destination) return;
+        setActiveGroup(destination.group);
+        onSelectCategory(destination.category);
+        setActiveTab(destination.tab);
+        recordServiceStep(destination.group, destination.category);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    const openProvider = (provider, origin = 'services') => {
+        setSelectedProvider(provider);
+        setProviderReturn(origin);
+        setActiveTab('provider');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    const openSearch = () => {
+        if (searchOpen) return;
+        window.history.pushState({ ...window.history.state, skilllinkSearch: true }, '', window.location.href);
+        setSearchOpen(true);
+    };
+    const closeSearch = () => {
+        setSearch('');
+        setSearchOpen(false);
+        if (window.history.state?.skilllinkSearch) window.history.back();
+        homeSearchRef.current?.blur();
+    };
+    const finishSearch = () => {
+        setSearchOpen(false);
+        setSearch('');
+        if (window.history.state?.skilllinkSearch) {
+            const { skilllinkSearch, ...state } = window.history.state;
+            window.history.replaceState(state, '', window.location.href);
+        }
+    };
+    const backFromServices = () => {
+        if (window.history.state?.skilllinkServiceStep) { window.history.back(); return; }
+        if (selectedCategory) onSelectCategory(null);
+        else if (activeGroup) setActiveGroup(null);
+        else goHome();
+    };
+    const groups = groupCategories(categories);
+    const searchMatches = searchCategories(categories, search);
+    const searchProviders = filterProvidersBySearch(allRepairers, categories, search);
+    const tabTitle = { ai: 'Ask AI for Help', upcoming: 'Upcoming Booking', chats: 'Messages', bookings: 'Bookings', notifications: 'Notifications', settings: 'Settings', scanner: 'Problem scanner', planner: 'Project planner' };
 
-    const getCatStyle = (index) => CAT_COLORS[index % CAT_COLORS.length];
+    return <div className={styles.dashboard}>
+        <header className={styles.header}>
+            {activeTab === 'settings' || activeTab === 'notifications' ? <h1 className={styles.mainTabTitle}>{activeTab === 'settings' ? 'Settings' : 'Notifications'}</h1> : <div className={styles.brand} aria-label="SkillLink"><span className={styles.brandIcon} aria-hidden="true">S</span></div>}
+            {activeTab === 'home' && <div className={styles.headerActions}><span className={styles.headerGreeting}>Hello, {user?.name?.trim().split(/\s+/)[0] || 'there'}</span><button type="button" className={styles.profileButton} onClick={() => router.visit('/settings?section=client-profile&from=home')} aria-label="Open profile">{initials(user?.name)}</button></div>}
+        </header>
 
-    return (
-        <>
-            <GlobalStyles />
-            <Head title="Dashboard — FixMe." />
+        <main className={styles.main}>
+            {activeTab === 'home' ? <>
+                <section className={styles.welcome} aria-label="Find a service">
+                    <h1>Find the right help for today.</h1>
+                    <div className={styles.search}><FiSearch aria-hidden="true" /><input ref={homeSearchRef} type="search" aria-label="Search for a service or skill" placeholder="Search for a service or skill." value={search} onFocus={openSearch} onChange={event => { setSearch(event.target.value); openSearch(); }} /></div>
+                </section>
 
-            {/* Ambient liquid background layer */}
-            <div className="fixme-bg" />
-
-            <div className="min-h-screen flex flex-col relative pb-28 z-10">
-                
-                {/* ================= HEADER SECTION ================= */}
-                {(activeTab === 'home' || activeTab === 'scanner' || activeTab === 'planner') && (
-                    <div className="hero-mobile glass-dark glass-edge shadow-xl">
-                        <div className="flex justify-between items-center relative z-10">
-                            {appointment?.exists ? (
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/15 p-2.5 rounded-xl border border-white/15 backdrop-blur-md shadow-inner">
-                                        <span className="text-xl">🗓️</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-[10px] uppercase tracking-widest text-white/60 font-semibold mb-0.5">Upcoming Job</p>
-                                        <div className="flex flex-col">
-                                            <span className="font-bold text-base leading-tight text-white">{appointment.type}</span>
-                                            <span className="text-xs text-[#c8a97a] font-medium mt-0.5">{appointment.day} {appointment.month} • {appointment.time}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/15 p-2.5 rounded-xl border border-white/15 backdrop-blur-md shadow-inner">
-                                        <span className="text-xl">👋</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-white/60 font-medium">Good Morning,</p>
-                                        <h1 className="font-bold text-xl leading-tight text-white mt-0.5">
-                                            {user?.name?.split(' ')[0] || 'Guest'}
-                                        </h1>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            <button onClick={() => setActiveTab('profile')} className="relative p-0.5 rounded-full bg-white/10 border border-white/20 shadow-md">
-                                <img 
-                                    src={`https://ui-avatars.com/api/?name=${user?.name || 'Guest'}&background=c8a97a&color=3b2314&bold=true`} 
-                                    className="w-9 h-9 rounded-full object-cover" 
-                                    alt="Profile"
-                                />
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Sub-view Sticky Headers */}
-                {(activeTab === 'chats' || activeTab === 'history' || activeTab === 'profile') && (
-                    <div className="bg-[#faf6f0]/80 backdrop-blur-xl pt-2 pb-4 px-6 border-b border-white/50 sticky top-0 z-30 flex justify-between items-center">
-                        <div className="logo-text">
-                            {activeTab === 'chats' && 'Messages'}
-                            {activeTab === 'history' && 'Job History'}
-                            {activeTab === 'profile' && 'My Profile'}
-                            <span className="logo-dot">.</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* ================= MAIN CONTENT ================= */}
-                <div className={`flex-1 px-4 relative z-20 ${activeTab === 'home' && !selectedCategory ? 'mt-4' : 'mt-4'}`}>                  
-                    {/* VIEW A: HOME DASHBOARD */}
-                    {activeTab === 'home' && (
-                        <>
-                           {!selectedCategory ? (
-                                <div className="space-y-6 animate-slide-up">
-                                    
-                                    {/* Categories Section (Fixed 2x2 Grid Paging) */}
-                                    <div className="space-y-3">
-                                        <div className="px-1">
-                                            <div className="section-title">
-                                                <span className="section-badge">📂</span>
-                                                Categories
-                                            </div>
-                                        </div>
-
-                                        {/* Categories Swipeable Pager (Pages of 4 structured in 2x2 Grid) */}
-                                        <div className="glass rounded-[28px] p-3.5 border border-white/70 shadow-md">
-                                            <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-6">
-                                                {Array.from({ length: Math.ceil(categories.length / 4) }).map((_, pageIndex) => {
-                                                    const pageCategories = categories.slice(pageIndex * 4, (pageIndex + 1) * 4);
-                                                    
-                                                    return (
-                                                        <div key={pageIndex} className="min-w-full snap-center grid grid-cols-2 gap-3">
-                                                            {pageCategories.map((cat, index) => {
-                                                                const globalIndex = (pageIndex * 4) + index;
-                                                                const token = getCatStyle(globalIndex);
-                                                                
-                                                                return (
-                                                                    <button key={globalIndex} onClick={() => onSelectCategory(cat)} className="cat-tile">
-                                                                        <div className="cat-icon-wrap" style={{ backgroundColor: token.bg }}>
-                                                                            <span className="relative z-10">{cat.icon || token.emoji}</span>
-                                                                        </div>
-                                                                        <span className="text-[11px] font-bold text-[#3b2314] text-center leading-tight block w-full px-1 truncate">
-                                                                            {cat.name}
-                                                                        </span>
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            
-                                            {/* Page Indicator Dots */}
-                                            {categories.length > 4 && (
-                                                <div className="flex justify-center gap-1.5 mt-3.5 mb-1">
-                                                    {Array.from({ length: Math.ceil(categories.length / 4) }).map((_, i) => (
-                                                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#3b2314]/20"></div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    {/* ✨ AI SMART ASSISTANT & TOOLS HUBS (2-Button Grid Layout) */}
-                                    <div className="space-y-3 pt-1">
-                                        <div className="px-1">
-                                            <div className="section-title">
-                                                <span className="section-badge">✨</span>
-                                                AI Smart Suite & Discovery
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            
-                                            {/* Button 1: Problem Scanner */}
-                                            <button className="ai-grid-btn" onClick={() => { setActiveTab('scanner'); window.scrollTo({ top: 0 }); }}>
-                                                <div className="ai-icon-circle">📸</div>
-                                                <div className="text-center">
-                                                    <p className="font-bold text-xs text-[#3b2314] m-0">Problem Scanner</p>
-                                                    <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Visual diagnosis tool</p>
-                                                </div>
-                                            </button>
-                                            
-                                            {/* Button 2: Project Planner */}
-                                            <button className="ai-grid-btn" onClick={() => { setActiveTab('planner'); window.scrollTo({ top: 0 }); }}>
-                                                <div className="ai-icon-circle">🏗️</div>
-                                                <div className="text-center">
-                                                    <p className="font-bold text-xs text-[#3b2314] m-0">Project Planner</p>
-                                                    <p className="text-[10px] text-gray-500 m-0 mt-0.5 leading-tight">Team architect builder</p>
-                                                </div>
-                                            </button>
-
-                                            {/* The other two buttons have been removed! */}
-                                        </div>
-                                    </div>
-
-                                </div>
-                           ) : (
-                                /* Category Selected View: List of Repairers */
-                                <div className="animate-slide-up space-y-4">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <button 
-                                            onClick={() => onSelectCategory(null)}
-                                            className="w-10 h-10 rounded-full glass flex items-center justify-center shadow-sm"
-                                        >
-                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                                        </button>
-                                        <div>
-                                            <h2 className="text-lg font-extrabold text-[#3b2314] leading-tight">
-                                                {selectedCategory.name} Experts
-                                            </h2>
-                                            <p className="text-[11px] text-gray-500 font-bold uppercase tracking-wider">
-                                                {repairers.length} professionals found
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {repairers.length === 0 ? (
-                                        <div className="empty-state">
-                                            <div className="text-4xl mb-3">🕵️</div>
-                                            <h3 className="font-bold text-[#3b2314]">No experts found</h3>
-                                            <p className="text-xs text-gray-500 mt-1">Try another category for now.</p>
-                                            <button onClick={() => onSelectCategory(null)} className="mt-4 btn-caramel text-xs">View All</button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {repairers.map((repairer) => (
-                                                <div key={repairer.id} onClick={() => onRepairerSelect(repairer)} className="list-row flex-col items-start gap-3">
-                                                    <div className="flex items-center gap-3 w-full">
-                                                        <div className="h-12 w-12 rounded-2xl overflow-hidden border-2 border-white shadow-sm flex-shrink-0 bg-gray-100">
-                                                            <img 
-                                                                src={`https://ui-avatars.com/api/?name=${repairer.repairer_profile.business_name}&background=random`} 
-                                                                className="h-full w-full object-cover" 
-                                                                alt={repairer.repairer_profile.business_name} 
-                                                            />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex justify-between items-start">
-                                                                <h3 className="font-bold text-sm text-[#3b2314] truncate">
-                                                                    {repairer.repairer_profile.business_name}
-                                                                </h3>
-                                                                <div className="star-badge">
-                                                                    <span className="text-[#c8a97a]">★</span>
-                                                                    <span>{repairer.repairer_profile.rating || 'New'}</span>
-                                                                </div>
-                                                            </div>
-                                                            <p className="text-[11px] text-gray-500 font-medium">
-                                                                📍 {repairer.location?.address || 'Davao City'}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-1.5 mt-1">
-                                                        {repairer.repairer_profile.skills?.slice(0, 3).map(skill => (
-                                                            <span key={skill.id} className="skill-chip">{skill.name}</span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </>
-                    )}
-
-                    {/* VIEW B: CHATS LIST */}
-                    {activeTab === 'chats' && (
-                        <div className="animate-slide-up space-y-3">
-
-                            {/* Refresh button */}
-                            <div className="flex justify-end mb-1">
-                                <button
-                                    onClick={() => {
-                                        setIsRefreshing(true);
-                                        router.reload({
-                                            only: ['conversations'],
-                                            onFinish: () => setIsRefreshing(false),
-                                        });
-                                    }}
-                                    className="text-[10px] font-bold text-[#7c5230] flex items-center gap-1 opacity-60"
-                                >
-                                    <span style={{ display: 'inline-block', animation: isRefreshing ? 'spin 1s linear infinite' : 'none' }}>↻</span>
-                                    {isRefreshing ? 'Refreshing…' : 'Refresh'}
-                                </button>
-                            </div>
-
-                            {conversations.length === 0 ? (
-                                <div className="empty-state">
-                                    <div className="w-13 h-13 bg-[#f5ede0] rounded-full flex items-center justify-center mx-auto mb-3 text-xl">💬</div>
-                                    <h3 className="font-bold text-sm text-[#3b2314]">No messages yet</h3>
-                                    <p className="text-xs text-gray-500 max-w-[200px] mx-auto mt-1">Book a dynamic service workspace to start coordination.</p>
-                                    <button onClick={() => setActiveTab('home')} className="mt-4 btn-caramel text-xs">Find a Repairer</button>
-                                </div>
-                            ) : (
-                                conversations.map((chat) => (
-                                    <div key={chat.id} onClick={() => handleOpenChat(chat.booking_id)} className="list-row relative">
-                                        {chat.unread_count > 0 && <div className="absolute top-4 right-4 w-2.5 h-2.5 bg-red-500 rounded-full border border-white"></div>}
-                                        <div className="h-12 w-12 rounded-full overflow-hidden border-2 border-white shadow-sm flex-shrink-0 bg-gray-100">
-                                            <img src={`https://ui-avatars.com/api/?name=${chat.other_user_name}&background=random`} className="h-full w-full object-cover" alt="" />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex justify-between items-baseline mb-0.5">
-                                                <h3 className="font-bold text-sm text-[#3b2314] truncate">{chat.other_user_name}</h3>
-                                                <span className="text-[10px] text-gray-400 font-medium">{chat.last_message_time || 'Just now'}</span>
-                                            </div>
-                                            <div className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#f5ede0] text-[#5d3a1a] text-[9px] font-bold mb-1 border border-black/5">
-                                                Job #{chat.booking_id} • {chat.service_type || 'Repair'}
-                                            </div>
-                                            <p className="text-xs text-gray-500 truncate font-medium">{chat.last_message_content || 'Chat interface opened'}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
-
-                    {/* VIEW C: HISTORY LIST */}
-                    {activeTab === 'history' && (
-                        <div className="animate-slide-up space-y-3">
-                            {history.length === 0 ? (
-                                <div className="empty-state">
-                                    <div className="w-13 h-13 bg-[#f5ede0] rounded-full flex items-center justify-center mx-auto mb-3 text-xl">📋</div>
-                                    <h3 className="font-bold text-sm text-[#3b2314]">Clean ledger</h3>
-                                    <p className="text-xs text-gray-500 max-w-[200px] mx-auto mt-1">Completed assignments will reside here.</p>
-                                </div>
-                            ) : (
-                                history.map((job) => (
-                                    <div key={job.id} className="glass rounded-2xl p-4 border border-white/80 shadow-sm space-y-3">
-                                        <div className="flex justify-between items-start gap-4">
-                                            <div>
-                                                <span className={`text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
-                                                    job.status === 'completed' ? 'bg-[#f5ede0] text-[#3b2314]' : 'bg-green-100 text-green-800'
-                                                } border border-black/5`}>
-                                                    {job.status}
-                                                </span>
-                                                <h3 className="font-bold text-[#3b2314] mt-2 text-base">{job.service_type}</h3>
-                                            </div>
-                                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                                                {new Date(job.scheduled_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                            </p>
-                                        </div>
-                                        <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{job.problem_description}</p>
-                                        
-                                        {job.status === 'completed' && (
-                                            <div className="pt-1">
-                                                {!job.review ? (
-                                                    <button 
-                                                        onClick={() => setReviewingJob(job)}
-                                                        className="w-full py-2.5 bg-gradient-to-r from-[#b07d4a] to-[#7c5230] text-white font-bold rounded-xl text-xs shadow-md active:scale-[0.98] transition-transform"
-                                                    >
-                                                        ⭐ Leave an Evaluation Review
-                                                    </button>
-                                                ) : (
-                                                    <div className="w-full py-2 bg-[#f5ede0]/60 text-[#7c5230] font-bold rounded-xl text-xs text-center border border-black/5">
-                                                        You rated this operator {job.review.rating} ★
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    )}
-
-                    {/* VIEW D: PROFILE TAB */}
-                    {activeTab === 'profile' && (
-                        <div className="animate-slide-up space-y-4">
-                            <div className="glass p-4 rounded-2xl border border-white/80 shadow-sm flex items-center gap-4">
-                                <div className="w-13 h-13 bg-gradient-to-tr from-[#b07d4a] to-[#3b2314] rounded-full p-0.5 border border-white/50 shadow-md">
-                                    <img src={`https://ui-avatars.com/api/?name=${user?.name || 'Guest'}&background=faf6f0&color=3b2314&bold=true&size=128`} className="w-full h-full rounded-full object-cover" alt="" />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="text-base font-extrabold text-[#3b2314] truncate">{user?.name || 'Guest Account'}</h2>
-                                    <p className="text-xs text-gray-500 truncate">{user?.email || 'No email bound'}</p>
-                                </div>
-                            </div>
-
-                            <div className="glass p-1.5 rounded-2xl border border-white/80 shadow-sm divide-y divide-gray-100/60">
-                                <button onClick={onSwitchToWork} className="w-full flex items-center justify-between px-3.5 py-3.5 hover:bg-white/40 rounded-xl transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-7 h-7 rounded-lg bg-[#f5ede0] text-[#3b2314] flex items-center justify-center text-sm shadow-sm">⚡</div>
-                                        <span className="text-xs font-bold text-gray-700">Switch to Repairer Mode</span>
-                                    </div>
-                                    <span className="text-gray-300 text-sm">→</span>
-                                </button>
-                                <button onClick={handleLogout} className="w-full flex items-center justify-between px-3.5 py-3.5 hover:bg-red-50/50 rounded-xl transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-7 h-7 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-sm shadow-sm">🚪</div>
-                                        <span className="text-xs font-bold text-gray-700">Disconnect & Log Out</span>
-                                    </div>
-                                    <span className="text-gray-300 text-sm">→</span>
-                                </button>
-                            </div>
-                            <div className="text-center text-[9px] text-gray-400 font-bold tracking-wider uppercase pt-4">FixMe Customer App v1.0 • App Store Build</div>
-                        </div>
-                    )}
-
-                    {/* VIEW E: PROBLEM SCANNER */}
-                    {activeTab === 'scanner' && (
-                        <ProblemScanner 
-                            onBack={() => setActiveTab('home')} 
-                            onFindFixer={() => {
-                                setActiveTab('home'); 
-                                onSelectCategory(null); 
-                                window.scrollTo({ top: 0, behavior: 'smooth' }); 
-                            }} 
-                        />
-                    )}
-
-                    {/* VIEW F: PROJECT PLANNER */}
-                    {activeTab === 'planner' && (
-                        <ProjectPlanner 
-                            onBack={() => setActiveTab('home')} 
-                            onFindFixer={() => {
-                                setActiveTab('home'); 
-                                onSelectCategory(null); 
-                                window.scrollTo({ top: 0, behavior: 'smooth' }); 
-                            }} 
-                        />
-                    )}
-
+                <section className={styles.section} aria-label="Quick actions"><div className={styles.homeActions}>
+                    <button type="button" className={styles.homeAction} onClick={findProviders}><span><FiGrid aria-hidden="true" /></span><strong>Explore Services</strong><small>Browse service groups</small><FiArrowRight aria-hidden="true" /></button>
+                    <button type="button" className={styles.homeAction} onClick={() => setActiveTab('ai')}><span><FiTool aria-hidden="true" /></span><strong>Ask AI for Help</strong><small>Scan or plan a project</small><FiArrowRight aria-hidden="true" /></button>
+                    <button type="button" className={styles.homeAction} onClick={() => { setBookingsView('upcoming'); setActiveTab('bookings'); }}><span><FiClock aria-hidden="true" /></span><strong>Upcoming Booking</strong>{appointment?.exists ? <small>{appointment.type}{appointment.repairer ? ` · ${appointment.repairer}` : ''}<br />{appointment.day} {appointment.month} · {appointment.time}</small> : <small>See your next booking</small>}<FiArrowRight aria-hidden="true" /></button>
+                    <button type="button" className={styles.homeAction} onClick={() => setActiveTab('chats')}><span><FiMessageCircle aria-hidden="true" /></span><strong>Messages</strong><small>Open conversations</small><FiArrowRight aria-hidden="true" /></button>
+                </div></section>
+                <section className={styles.aiPromos} aria-label="AI assistance">
+                    <article className={`${styles.aiPromo} ${styles.plannerPromo}`}><span><FiTool aria-hidden="true" /></span><h2>Planning a project?</h2><p>Describe your project, get a simple plan, and find providers who may help.</p><button type="button" onClick={() => setActiveTab('planner')}>Try AI Project Planner <FiArrowRight aria-hidden="true" /></button></article>
+                    <article className={`${styles.aiPromo} ${styles.scannerPromo}`}><span><FiCamera aria-hidden="true" /></span><h2>Not sure what’s wrong?</h2><p>Photograph a problem for an initial assessment and find a relevant provider.</p><button type="button" onClick={() => setActiveTab('scanner')}>Scan a Problem <FiArrowRight aria-hidden="true" /></button></article>
+                </section>
+            </> : activeTab === 'services' ? <>
+                <div className={styles.pageHeading}><button type="button" className={styles.iconButton} onClick={backFromServices} aria-label={selectedCategory ? 'Back to categories' : activeGroup ? 'Back to service groups' : 'Back to Home'}><FiArrowLeft aria-hidden="true" /></button><div><p className={styles.eyebrow}>Services</p><h1>{selectedCategory?.name || activeGroup || 'All services'}</h1></div></div>
+                <div className={styles.tabContent}>
+                    {!activeGroup && <div className={styles.groupGrid}>
+                        {Object.entries(groups).map(([name, items]) => {
+                            const Icon = groupIcons[name] || FiTool;
+                            return <button type="button" key={name} className={styles.groupTile} onClick={() => openGroup(name)}><span className={styles.groupIllustration}><Icon aria-hidden="true" /></span><strong>{name}</strong><small>{items.length} services <FiArrowRight aria-hidden="true" /></small></button>;
+                        })}
+                    </div>}
+                    {activeGroup && !selectedCategory && <div className={styles.serviceGrid}>
+                        {(groups[activeGroup] || []).map(category => {
+                            const Icon = categoryIcons[category.slug] || FiTool;
+                            return <button type="button" key={category.slug} className={styles.serviceTile} onClick={() => selectServiceCategory(category)}><span><Icon aria-hidden="true" /></span><strong>{category.name}</strong>{category.description && <small>{category.description}</small>}<FiArrowRight aria-hidden="true" className={styles.serviceArrow} /></button>;
+                        })}
+                    </div>}
+                    {selectedCategory && <section aria-label={`${selectedCategory.name} providers`}>
+                        <JobContextFields value={jobContext} onChange={onJobContextChange} pilotAreas={pilotAreas} accountLocation={user?.location} />
+                        <h2 className={styles.providersHeading} style={{ marginTop: 18 }}>Suggested providers for {selectedCategory.name}</h2>
+                        {jobContext.area && <p className={styles.resultCount}>{repairers.length} providers found in {pilotAreas[jobContext.area]}</p>}
+                        {!jobContext.area ? <p className={styles.searchHint}>Choose the job area to see providers who serve it.</p> : suggestionsLoading ? <p role="status" className={styles.searchHint}>Loading suggested providers…</p> : suggestionsError ? <p role="alert" className={styles.searchHint}>{suggestionsError}</p> : repairers.length ? <div className={styles.stack}>{repairers.map(provider => <ProviderCard key={provider.user_id || provider.id} provider={provider} onSelect={openProvider} />)}</div> : <EmptyState icon={FiSearch} title="No providers found" action={<button type="button" className={styles.primary} onClick={findProviders}>Explore Services</button>}>No providers offer this service in the chosen area yet.</EmptyState>}
+                    </section>}
                 </div>
-
-                
-
-    
-                {/* ================= BOTTOM NAVIGATION ================= */}
-                <div className="fixed bottom-4 left-4 right-4 glass rounded-[24px] border border-white/80 py-3 px-4 flex justify-between items-center z-50 shadow-xl shadow-black/5">
-                    <NavButton 
-                        label="Browse" 
-                        icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />} 
-                        isActive={activeTab === 'home'} 
-                        onClick={() => { scrollToTop(); setActiveTab('home'); }} 
-                    />
-                    <NavButton 
-                        label="Messages" 
-                        icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />} 
-                        isActive={activeTab === 'chats'} 
-                        onClick={() => setActiveTab('chats')}
-                        badge={conversations.some(c => c.unread_count > 0)} 
-                    />
-                    <NavButton 
-                        label="History" 
-                        icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />} 
-                        isActive={activeTab === 'history'} 
-                        onClick={() => setActiveTab('history')} 
-                        badge={pendingReviewsCount > 0} 
-                        badgeCount={pendingReviewsCount} 
-                    />
-                    <NavButton 
-                        label="Profile" 
-                        icon={<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.3} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />} 
-                        isActive={activeTab === 'profile'} 
-                        onClick={() => setActiveTab('profile')} 
-                    />
+            </> : activeTab === 'provider' && selectedProvider ? <>
+                <div className={styles.pageHeading}><button type="button" className={styles.iconButton} onClick={() => backTo(providerReturn)} aria-label="Back to providers"><FiArrowLeft aria-hidden="true" /></button><h1>Provider details</h1></div>
+                <div className={styles.tabContent}>
+                    <section className={styles.providerDetail}>
+                        <span className={styles.detailAvatar} aria-hidden="true">{initials(selectedProvider.repairer_profile?.business_name || selectedProvider.name)}</span>
+                        <h2>{selectedProvider.repairer_profile?.business_name || selectedProvider.name}</h2>
+                        {selectedProvider.repairer_profile?.bio && <p>{selectedProvider.repairer_profile.bio}</p>}
+                        {!!selectedProvider.repairer_profile?.skills?.length && <><h3>Services offered</h3><div className={styles.skills}>{selectedProvider.repairer_profile.skills.map(skill => <span key={skill.id}>{skill.name}</span>)}</div></>}
+                        <h3>Saved service location</h3>
+                        <p><FiMapPin aria-hidden="true" /> {selectedProvider.repairer_profile?.location?.address || 'Location not provided'}</p>
+                        <ProviderLocationMap location={selectedProvider.repairer_profile?.location} />
+                        <p className={styles.locationNote}>Map shows the provider's saved service location, not live tracking.</p>
+                    </section>
+                    <button type="button" className={styles.detailBooking} onClick={() => onRepairerSelect(selectedProvider)}>Request booking <FiArrowRight aria-hidden="true" /></button>
                 </div>
+            </> : <>
+                {activeTab !== 'settings' && activeTab !== 'notifications' && <div className={styles.pageHeading}><button type="button" className={styles.iconButton} onClick={() => backTo(activeTab === 'scanner' || activeTab === 'planner' ? 'ai' : 'home')} aria-label="Back"><FiArrowLeft aria-hidden="true" /></button><h1>{tabTitle[activeTab]}</h1></div>}
+                <div className={styles.tabContent}>
+                    {activeTab === 'bookings' && <div className={styles.bookingTabs}><button type="button" aria-current={bookingsView === 'upcoming' ? 'page' : undefined} onClick={() => openBookingsView('upcoming')}>Upcoming</button><button type="button" aria-current={bookingsView === 'history' ? 'page' : undefined} onClick={() => openBookingsView('history')}>History</button></div>}
+                    {activeTab === 'ai' && <div className={styles.actionChoices}>
+                        <button type="button" onClick={() => setActiveTab('scanner')}><FiCamera aria-hidden="true" /><span><strong>Problem Scanner</strong><small>Use the existing scanner</small></span><FiChevronRight aria-hidden="true" /></button>
+                        <button type="button" onClick={() => setActiveTab('planner')}><FiTool aria-hidden="true" /><span><strong>Project Planner</strong><small>Use the existing planner</small></span><FiChevronRight aria-hidden="true" /></button>
+                    </div>}
+                    {activeTab === 'notifications' && <NotificationsView notifications={notifications} onOpen={onOpenNotification} />}
+                    {activeTab === 'bookings' && bookingsView === 'upcoming' && (appointment?.exists ? <section className={styles.historyCard}>
+                        <div className={styles.historyMeta}><span><FiClock aria-hidden="true" />Upcoming booking</span></div>
+                        <h2>{appointment.type}{appointment.repairer ? ` · ${appointment.repairer}` : ''}</h2><p>{appointment.day} {appointment.month} · {appointment.time}</p>
+                        <div className={styles.bookingActions}><button type="button" className={styles.primary} onClick={() => router.visit(`/bookings/${appointment.id}`)}>View booking details</button>
+                        <button type="button" className={styles.textButton} onClick={() => handleOpenChat(appointment.id)}>Open conversation</button></div>
+                    </section> : <EmptyState icon={FiClock} title="No upcoming bookings" action={<button type="button" className={styles.primary} onClick={findProviders}>Explore Services</button>}>Find a service when you need one.</EmptyState>)}
+                    {activeTab === 'chats' && <>
+                        {conversations.length === 0 ? <EmptyState icon={FiMessageCircle} title="No messages yet" action={<button type="button" className={styles.primary} onClick={() => setActiveTab('home')}>Find a provider</button>}>Your booking conversations will appear here.</EmptyState> : <div className={styles.stack}>{conversations.map(chat => <button type="button" key={chat.id} className={styles.chat} onClick={() => handleOpenChat(chat.booking_id)}>
+                            <span className={styles.avatar} aria-hidden="true">{initials(chat.other_user_name)}</span><span className={styles.chatText}><strong>{chat.other_user_name}</strong><small>Job #{chat.booking_id} · {chat.service_type || 'Repair'}</small><span>{chat.last_message_content ?? 'No messages yet'}</span>{chat.last_message_time && <small>{chat.last_message_time}</small>}</span><FiChevronRight aria-hidden="true" />
+                        </button>)}</div>}
+                    </>}
+                    {activeTab === 'bookings' && bookingsView === 'history' && <div className={styles.stack}>
+                        {completionJobs.map(job => <article className={styles.historyCard} key={job.id}>
+                            <div className={styles.historyMeta}><span>{job.status === 'completion_disputed' ? 'Issue reported' : 'Confirm work'}</span></div>
+                            <h2>{job.service_type}</h2>{job.completion_issue_reason && <p>{job.completion_issue_reason}</p>}
+                            <button type="button" className={styles.primary} onClick={() => router.visit(`/bookings/${job.id}`)}>View completion details</button>
+                        </article>)}
+                        {history.length === 0 && completionJobs.length === 0 && <EmptyState icon={FiClock} title="No completed jobs yet">Your completed services and reviews will appear here.</EmptyState>}
+                        {history.map(job => <article className={styles.historyCard} key={job.id}>
+                        <div className={styles.historyMeta}><span><FiCheckCircle aria-hidden="true" />{job.status}</span><time>{new Date(job.scheduled_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</time></div>
+                        <h2>{job.service_type}</h2><p>{job.problem_description}</p>
+                        <button type="button" className={styles.textButton} onClick={() => router.visit(`/bookings/${job.id}`)}>Work & payment details</button>
+                        {job.client_accepted_at && (!job.review ? <button type="button" className={styles.primary} onClick={() => setReviewingJob(job)}><FiStar aria-hidden="true" />Leave a review</button> : <p className={styles.rating}><FiStar aria-hidden="true" />Your rating: {job.review.rating}</p>)}
+                    </article>)}
+                    </div>}
+                    {activeTab === 'settings' && <div className={styles.settingsRows}>
+                        <button type="button" onClick={() => router.visit('/settings?section=client-profile')}><span className={styles.settingsIcon}><FiUser aria-hidden="true" /></span><span className={styles.settingsLabel}><strong>Profile</strong><small>Edit your account information</small></span><FiChevronRight aria-hidden="true" /></button>
+                        <button type="button" onClick={onSwitchToWork}><span className={styles.settingsIcon}><FiBriefcase aria-hidden="true" /></span><span className={styles.settingsLabel}><strong>{user?.is_repairer ? 'Switch to Provider' : 'Offer Services'}</strong><small>{user?.is_repairer ? 'Open your provider workspace' : 'Set up a provider profile'}</small></span><FiChevronRight aria-hidden="true" /></button>
+                        <button type="button" onClick={handleLogout}><span className={styles.settingsIcon}><FiLogOut aria-hidden="true" /></span><span className={styles.settingsLabel}><strong>Log Out</strong><small>End this session</small></span><FiChevronRight aria-hidden="true" /></button>
+                    </div>}
+                    {activeTab === 'scanner' && <div className={styles.legacyTools}><ProblemScanner onBack={() => setActiveTab('ai')} onFindFixer={findProviders} catalogCategories={categories} onSelectCategory={openAiProviders} /></div>}
+                    {activeTab === 'planner' && <div className={styles.legacyTools}><ProjectPlanner onBack={() => setActiveTab('ai')} onFindFixer={findProviders} catalogCategories={categories} onSelectCategory={openAiProviders} /></div>}
+                </div>
+            </>}
+        </main>
 
-                {/* Your other code... */}
-                {reviewingJob && (
-                    <ReviewModal 
-                        booking={reviewingJob} 
-                        onClose={() => setReviewingJob(null)} 
-                    />
-                )}
+        {searchOpen && <div className={styles.searchOverlay} onMouseDown={event => { if (event.target === event.currentTarget) closeSearch(); }}>
+            <section ref={searchSheetRef} className={styles.searchSheet} role="dialog" aria-modal="true" aria-label="Search services and providers">
+                <div className={styles.searchSheetHeading}><h2>Search services and providers</h2><button type="button" onClick={closeSearch} aria-label="Close search"><FiX aria-hidden="true" /></button></div>
+                <div className={styles.search}><FiSearch aria-hidden="true" /><input ref={searchInputRef} type="search" aria-label="Search providers or services" placeholder="Try table skirting" value={search} onChange={event => setSearch(event.target.value)} />{search && <button type="button" onClick={() => { setSearch(''); searchInputRef.current?.focus(); }} aria-label="Clear search"><FiX aria-hidden="true" /></button>}</div>
+                {!search.trim() ? <p className={styles.searchHint}>Search by service, task, or provider name.</p> : <div className={styles.searchSheetResults}>
+                    {searchMatches.length > 0 && <section className={styles.searchResults}><h3>Services</h3>{searchMatches.map(category => <button type="button" key={category.slug} onClick={() => { finishSearch(); setActiveGroup(category.service_group); onSelectCategory(category); setActiveTab('services'); recordServiceStep(category.service_group, category); }}><FiTool aria-hidden="true" /><span>{category.name}<small>{category.service_group}</small></span><FiChevronRight aria-hidden="true" /></button>)}</section>}
+                    {searchProviders.length > 0 && <section className={styles.searchResults}><h3>Providers</h3>{searchProviders.map(provider => <ProviderCard key={provider.user_id || provider.id} provider={provider} onSelect={item => {
+                        const matched = searchMatches.find(category => item.repairer_profile?.skills?.some(skill => skill.slug === category.slug));
+                        finishSearch();
+                        onSelectCategory(matched || null);
+                        setActiveGroup(matched?.service_group || null);
+                        setActiveTab('services');
+                        openProvider(item, 'services');
+                    }} />)}</section>}
+                    {!searchMatches.length && !searchProviders.length && <p className={styles.searchHint}>No matching services or providers found.</p>}
+                </div>}
+            </section>
+        </div>}
 
-
-            </div>
-        </>
-    );
+        <nav className={styles.navigation} aria-label="Client navigation">
+            <NavButton label="Home" icon={FiHome} isActive={activeTab === 'home'} onClick={goHome} />
+            <NavButton label="Notifications" icon={FiBell} isActive={activeTab === 'notifications'} onClick={() => setActiveTab('notifications')} badge={unreadNotificationsCount > 0} badgeCount={unreadNotificationsCount} />
+            <NavButton label="Settings" icon={FiSettings} isActive={activeTab === 'settings'} onClick={() => setActiveTab('settings')} />
+        </nav>
+        {reviewingJob && <ReviewModal booking={reviewingJob} onClose={() => setReviewingJob(null)} />}
+    </div>;
 };
 
-const NavButton = ({ label, icon, isActive, onClick, badge, badgeCount }) => (
-    <button 
-        onClick={onClick}
-        className={`flex-1 flex flex-col items-center gap-1.5 transition-all relative ${
-            isActive ? 'text-[#3b2314] scale-105' : 'text-gray-400'
-        }`}
-    >
-        <div className="relative flex items-center justify-center">
-            <svg className="w-5.5 h-5.5" fill={isActive ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                {icon}
-            </svg>
-            {badge && (
-                <span className="absolute -top-1 -right-1.5 min-w-[14px] h-3.5 bg-[#e05252] rounded-full border border-white flex items-center justify-center shadow-sm">
-                    {badgeCount > 0 && (
-                        <span className="text-[8px] text-white font-extrabold leading-none px-0.5">
-                            {badgeCount}
-                        </span>
-                    )}
-                </span>
-            )}
-        </div>
-        <span className="text-[9px] font-bold tracking-tight">{label}</span>
-    </button>
-);
+function NavButton({ label, icon: Icon, isActive, onClick, badge, badgeCount }) {
+    return <button type="button" onClick={onClick} className={`${styles.navButton} ${isActive ? styles.activeNav : ''}`} aria-current={isActive ? 'page' : undefined}>
+        <span className={styles.navIcon}><Icon aria-hidden="true" />{badge && <span className={styles.badge} aria-label={badgeCount > 0 ? `${badgeCount} pending reviews` : 'Unread messages'}>{badgeCount > 0 ? badgeCount : ''}</span>}</span><span>{label}</span>
+    </button>;
+}
 
 export default MobileDashboard;

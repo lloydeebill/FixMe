@@ -4,8 +4,6 @@ use App\Http\Controllers\BookingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\OnboardingController; //  Add this import!
-use App\Http\Controllers\ChatController;
-use App\Http\Controllers\Api\GeminiController;
 
 
 // This test route is safe to keep!
@@ -38,11 +36,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/onboarding/repairer-details', [OnboardingController::class, 'saveRepairerDetails'])
         ->name('onboarding.repairer-details.store');
 
-    Route::get('/bookings/{id}/messages', [ChatController::class, 'fetchMessages']);
-
-    // Send a message for a job
-    Route::post('/bookings/{id}/messages', [ChatController::class, 'sendMessage']);
-
     Route::get('/bookings', [BookingController::class, 'index']); // For the list
     Route::post('/bookings/{id}/complete', [BookingController::class, 'complete']); // For the button
 
@@ -51,6 +44,3 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bookings/{id}/complete', [BookingController::class, 'complete']); // For the button
 
 });
-
-Route::post('/scan-problem', [GeminiController::class, 'scan']);
-Route::post('/plan-project', [GeminiController::class, 'plan']);

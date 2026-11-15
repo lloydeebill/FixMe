@@ -7,6 +7,12 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## SkillLink TESDA qualification screening
+
+Run `php artisan migrate` to add the qualification records. Set `GEMINI_API_KEY` on the server; `GEMINI_CERTIFICATE_MODEL` defaults to `gemini-2.5-flash` and can be changed separately from the existing scanner and planner. Do not put the key in frontend code. The certificate flow stores images on Laravel's private `local` disk and calls Gemini during submission or retry, with a 20-second service timeout. Ensure PHP's upload and request size limits allow a 5 MB image.
+
+Providers can manage submissions from their profile or the provider sidebar. Automated screening checks visible text, readability, and consistency. Verification stays **Pending**; screening does not confirm issuance by TESDA. No public badges or booking restrictions are attached to it.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
