@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class GeminiController extends Controller
 {
@@ -15,7 +17,14 @@ class GeminiController extends Controller
      */
     public function scan(Request $request)
     {
-        $request->validate(['image' => 'required|string']);
+        $validated = $request->validate([
+            'image' => ['required', 'string', 'max:7000000'],
+            'mime_type' => ['required', Rule::in(['image/jpeg', 'image/png'])],
+        ]);
+        $image = base64_decode($validated['image'], true);
+        if ($image === false || strlen($image) > 5 * 1024 * 1024 || (new \finfo(FILEINFO_MIME_TYPE))->buffer($image) !== $validated['mime_type']) {
+            throw ValidationException::withMessages(['image' => 'Choose a valid JPEG or PNG photo up to 5 MB.']);
+        }
 
         $payload = [
             'contents' => [[
@@ -30,8 +39,8 @@ class GeminiController extends Controller
                     
                     Constraint: Plain text only. Do not use asterisks, bolding, bullet points, or markdown formatting.'],
                     ['inline_data' => [
-                        'mime_type' => 'image/jpeg',
-                        'data' => $request->image
+                        'mime_type' => $validated['mime_type'],
+                        'data' => $validated['image']
                     ]]
                 ]
             ]]

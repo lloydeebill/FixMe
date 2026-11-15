@@ -20,8 +20,16 @@ const ProblemScanner = ({ onBack, onFindFixer, catalogCategories, onSelectCatego
     };
 
     const handleImageChange = (e) => {
-        const file = e.target.files[0];
+        const file = e.target.files?.[0];
         if (file) {
+            if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+                setImageFile(null);
+                setImagePreview(null);
+                setAnalysisResult('Choose a JPEG or PNG photo up to 5 MB.');
+                setAnalysisSucceeded(false);
+                e.target.value = '';
+                return;
+            }
             setImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => setImagePreview(reader.result);
@@ -31,19 +39,8 @@ const ProblemScanner = ({ onBack, onFindFixer, catalogCategories, onSelectCatego
         }
     };
 
-    const fileToGenerativePart = async (file) => {
-        const base64EncodedDataPromise = new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
-            reader.readAsDataURL(file);
-        });
-        return {
-            inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
-        };
-    };
-
     const analyzeImage = async () => {
-        if (!imageFile) return;
+        if (!imageFile || isAnalyzing) return;
         setIsAnalyzing(true);
         setAnalysisResult("");
         setAnalysisSucceeded(false);
@@ -61,21 +58,28 @@ const ProblemScanner = ({ onBack, onFindFixer, catalogCategories, onSelectCatego
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
                 },
-                body: JSON.stringify({ image: base64Data })
+                body: JSON.stringify({ image: base64Data, mime_type: imageFile.type })
             });
 
-            // In ProblemScanner.jsx
             const data = await response.json();
 
             if (!response.ok || data.error) {
-                setAnalysisResult("The initial assessment is unavailable. Please try again.");
+                const message = response.status === 422
+                    ? (data.errors?.image?.[0] || data.errors?.mime_type?.[0] || 'Choose a valid JPEG or PNG photo up to 5 MB.')
+                    : response.status === 401 ? 'Please sign in again to use the scanner.'
+                    : response.status === 419 ? 'Your session expired. Refresh the page and try again.'
+                    : response.status === 429 ? 'Too many scans right now. Wait a minute and try again.'
+                    : 'The AI service is temporarily unavailable. Please try again later.';
+                setAnalysisResult(message);
                 return;
             }
 
-            // Now safely access the data
-            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const resultText = data.candidates?.[0]?.content?.parts
+                ?.filter(part => !part.thought && typeof part.text === 'string')
+                .map(part => part.text).join('\n').trim();
             if (!resultText) {
                 setAnalysisResult("No assessment was returned. Please try again.");
                 return;
@@ -83,8 +87,7 @@ const ProblemScanner = ({ onBack, onFindFixer, catalogCategories, onSelectCatego
             setAnalysisResult(resultText);
             setAnalysisSucceeded(true);
 
-        } catch (error) {
-            console.error("Backend Error:", error);
+        } catch {
             setAnalysisResult("System busy. Please try again in a moment.");
         } finally {
             setIsAnalyzing(false);
@@ -140,13 +143,13 @@ const ProblemScanner = ({ onBack, onFindFixer, catalogCategories, onSelectCatego
                                 <p className="text-xs mt-1">JPEG, PNG supported</p>
                             </div>
                         )}
-                        <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
+                        <input type="file" accept="image/jpeg,image/png" capture="environment" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
                     </div>
 
                     {/* Action Button */}
-                    {imagePreview && !analysisResult && (
+                    {imagePreview && !analysisSucceeded && (
                         <button onClick={analyzeImage} disabled={isAnalyzing} className="sl-ai-primary w-full py-3.5 text-sm flex justify-center items-center gap-2">
-                            {isAnalyzing ? "✨ Analyzing with AI..." : "Scan Problem"}
+                            {isAnalyzing ? "✨ Analyzing with AI..." : analysisResult ? 'Retry scan' : "Scan Problem"}
                         </button>
                     )}
 
@@ -157,7 +160,7 @@ const ProblemScanner = ({ onBack, onFindFixer, catalogCategories, onSelectCatego
                                 <span className="section-badge bg-[#c8a97a]/20 text-lg">🤖</span>
                                 <h3 className="font-bold text-sm">{analysisSucceeded ? 'Initial assessment' : 'Assessment unavailable'}</h3>
                             </div>
-                            <div className="text-xs leading-relaxed space-y-2 whitespace-pre-line font-medium text-gray-700">
+                            <div role={analysisSucceeded ? 'status' : 'alert'} className="text-xs leading-relaxed space-y-2 whitespace-pre-line font-medium text-gray-700">
                                 {analysisResult}
                             </div>
 
