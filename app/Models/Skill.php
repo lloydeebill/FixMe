@@ -11,7 +11,14 @@ class Skill extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug'];
+    protected $fillable = ['name', 'slug', 'service_group', 'description', 'search_terms', 'sort_order', 'is_active'];
+
+    protected $casts = ['search_terms' => 'array', 'is_active' => 'boolean'];
+
+    public function scopeCatalog($query)
+    {
+        return $query->where('is_active', true)->whereNotNull('service_group')->orderBy('sort_order');
+    }
 
     public function repairers(): BelongsToMany
     {

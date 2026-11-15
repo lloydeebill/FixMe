@@ -7,13 +7,19 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Events\NewMessage; // Use the correct Event name
 use App\Models\Booking;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Broadcasting\BroadcastException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Services\NotificationRecorder;
 
 class ChatController extends Controller
 {
     // 1. Get messages
-    public function fetchMessages($bookingId)
+    public function fetchMessages(Request $request, $bookingId)
     {
+        $booking = Booking::with('repairerProfile')->findOrFail($bookingId);
+        $this->authorizeParticipant($request, $booking);
+
         $conversation = Conversation::where('booking_id', $bookingId)->first();
 
         if (!$conversation) {
@@ -25,21 +31,17 @@ class ChatController extends Controller
     }
 
     // 2. Send message
-    public function sendMessage(Request $request, $bookingId)
+    public function sendMessage(Request $request, $bookingId, NotificationRecorder $notifier)
     {
-        $request->validate(['message' => 'required|string']);
-        $user = Auth::user();
-
-        // A. Identify the Booking and the Participants
         $booking = Booking::with('repairerProfile')->findOrFail($bookingId);
+        $this->authorizeParticipant($request, $booking);
+        $request->validate(['message' => 'required|string']);
+        $user = $request->user();
 
         // 1. Get Customer ID 
         $customerUserId = $booking->customer_id;
 
         // 2. Get Repairer User ID 
-        if (!$booking->repairerProfile) {
-            return redirect()->back()->withErrors(['message' => 'No repairer assigned yet.']);
-        }
         $repairerUserId = $booking->repairerProfile->user_id;
 
         // B. Determine Receiver
@@ -51,28 +53,41 @@ class ChatController extends Controller
             $receiverId = $customerUserId;
         }
         // C. Find or Create the Conversation Room (Based on Booking ID)
-        $conversation = Conversation::firstOrCreate(
-            ['booking_id' => $bookingId],
-            [
-                // These run only if creating a NEW conversation
+        $message = DB::transaction(function () use ($booking, $bookingId, $user, $receiverId, $request, $notifier) {
+            $conversation = Conversation::firstOrCreate(
+                ['booking_id' => $bookingId],
+                ['sender_id' => $user->id, 'receiver_id' => $receiverId]
+            );
+            $message = Message::create([
+                'conversation_id' => $conversation->id,
                 'sender_id' => $user->id,
-                'receiver_id' => $receiverId
-            ]
-        );
-
-        // D. Create the Message in DB
-        $message = Message::create([
-            'conversation_id' => $conversation->id,
-            'sender_id' => $user->id,
-            'content' => $request->message
-        ]);
+                'content' => $request->message,
+            ]);
+            $notifier->record($booking, $receiverId, $user->id, 'new_message', "message:{$message->id}", $message);
+            return $message;
+        });
 
         // E. Load sender info for the frontend
         $message->load('sender');
 
-        // F. Broadcast! (Pass the message AND the calculated receiverId)
-        broadcast(new NewMessage($message, $receiverId))->toOthers();
+        // Broadcasting is optional; the saved message remains available through polling.
+        try {
+            broadcast(new NewMessage($message, $receiverId, $booking->id))->toOthers();
+        } catch (BroadcastException $exception) {
+            Log::warning('Chat broadcast failed', [
+                'exception_type' => $exception::class,
+                'connection' => config('broadcasting.default'),
+            ]);
+        }
 
-        return redirect()->back();
+        return response()->json(['message' => $message], 201);
+    }
+
+    private function authorizeParticipant(Request $request, Booking $booking): void
+    {
+        abort_unless($booking->repairerProfile && in_array($request->user()?->user_id, [
+            $booking->customer_id,
+            $booking->repairerProfile->user_id,
+        ], true), 403);
     }
 }

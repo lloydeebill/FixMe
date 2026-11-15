@@ -18,12 +18,25 @@ class Booking extends Model
     'status',
     'problem_description',
     'location_snapshot',
+    'service_area',
+    'job_latitude',
+    'job_longitude',
     'google_event_id',
+    'completion_requested_at',
+    'client_accepted_at',
+    'completion_issue_reason',
+    'payment_method',
+    'client_payment_reported_at',
+    'provider_payment_confirmed_at',
   ];
 
   protected $casts = [
     'scheduled_at' => 'datetime',
     'end_time' => 'datetime',
+    'completion_requested_at' => 'datetime',
+    'client_accepted_at' => 'datetime',
+    'client_payment_reported_at' => 'datetime',
+    'provider_payment_confirmed_at' => 'datetime',
   ];
 
   // Connectivity back to User (Customer)
@@ -47,7 +60,7 @@ class Booking extends Model
 
   public function scopeActive($query)
   {
-    return $query->whereIn('status', ['pending', 'confirmed', 'in_progress']);
+    return $query->whereIn('status', ['pending', 'confirmed', 'in_progress', 'completion_requested', 'completion_disputed']);
   }
 
   // Scope for Completed Jobs

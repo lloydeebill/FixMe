@@ -11,6 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\Location;
 use App\Models\Skill; // 👈 Import Skill model
+use Illuminate\Validation\Rule;
 
 class RepairerController extends Controller
 {
@@ -20,7 +21,7 @@ class RepairerController extends Controller
     public function create(): Response
     {
         // 1. Fetch skills to populate the "Select Your Skills" list
-        $skills = Skill::all(['id', 'name', 'slug']);
+        $skills = Skill::catalog()->get(['id', 'name', 'slug', 'service_group', 'description']);
 
         return Inertia::render('RepairerRegister', [
             'availableSkills' => $skills // 👈 Pass to React
@@ -39,7 +40,9 @@ class RepairerController extends Controller
 
             // Skills Validation
             'skills'        => 'required|array|min:1',
-            'skills.*'      => 'exists:skills,id',
+            'skills.*'      => \Illuminate\Validation\Rule::exists('skills', 'id')->where('is_active', true),
+            'service_areas' => 'required|array|min:1',
+            'service_areas.*' => ['distinct', Rule::in(array_keys(config('pilot_areas.areas')))],
 
             // Location Validation (Matches your React form names)
             'location'      => 'required|string|max:255', // Address text
@@ -72,6 +75,7 @@ class RepairerController extends Controller
                 'bio'           => $request->bio,
                 'rating'        => 0,
                 'clients_helped' => 0,
+                'service_areas' => $request->service_areas,
             ]);
 
             // C. Sync Skills (The Pivot Table)

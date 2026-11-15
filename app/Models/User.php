@@ -36,6 +36,9 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'google_calendar_token',
+        'google_refresh_token',
+        'google_token_expires_in',
     ];
 
     protected function casts(): array

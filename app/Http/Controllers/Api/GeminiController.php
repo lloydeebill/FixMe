@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Client\ConnectionException;
 
 class GeminiController extends Controller
 {
@@ -73,18 +74,25 @@ class GeminiController extends Controller
     {
         $apiKey = config('services.gemini.key') ?? env('GEMINI_API_KEY');
 
-        $response = Http::withHeaders([
-            'Content-Type' => 'application/json',
-            'x-goog-api-key' => $apiKey,
-        ])->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", $payload);
+        if (!$apiKey) {
+            Log::warning('Gemini request unavailable: API key is not configured.', ['model' => $model]);
+            return response()->json(['error' => 'AI service is temporarily unavailable.'], 503);
+        }
 
-        Log::info('Gemini API Response: ' . $response->body());
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'x-goog-api-key' => $apiKey,
+            ])->connectTimeout(5)->timeout(20)
+                ->post("https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent", $payload);
+        } catch (ConnectionException) {
+            Log::warning('Gemini connection failed.', ['model' => $model]);
+            return response()->json(['error' => 'AI service is temporarily unavailable.'], 503);
+        }
 
         if ($response->failed()) {
-            return response()->json([
-                'error' => 'API Request Failed',
-                'details' => $response->json() ?? $response->body()
-            ], $response->status());
+            Log::warning('Gemini request failed.', ['model' => $model, 'status' => $response->status()]);
+            return response()->json(['error' => 'AI service is temporarily unavailable.'], $response->status() === 429 ? 429 : 502);
         }
 
         return response()->json($response->json());

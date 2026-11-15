@@ -1,15 +1,17 @@
 import '../skilllink.css';
 import React, { useState } from 'react';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import AiProviderSuggestion from './AiProviderSuggestion';
 
-const ProjectPlanner = ({ onBack, onFindFixer }) => {
+const ProjectPlanner = ({ onBack, onFindFixer, catalogCategories, onSelectCategory }) => {
     const [projectIdea, setProjectIdea] = useState("");
     const [isPlanning, setIsPlanning] = useState(false);
     const [planResult, setPlanResult] = useState("");
+    const [planSucceeded, setPlanSucceeded] = useState(false);
 
     const handleBack = () => {
         setProjectIdea("");
         setPlanResult("");
+        setPlanSucceeded(false);
         onBack();
     };
 
@@ -17,6 +19,7 @@ const ProjectPlanner = ({ onBack, onFindFixer }) => {
         if (!projectIdea.trim()) return;
         setIsPlanning(true);
         setPlanResult("");
+        setPlanSucceeded(false);
 
         try {
             // We call your Laravel backend route we defined in api.php
@@ -24,7 +27,8 @@ const ProjectPlanner = ({ onBack, onFindFixer }) => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? ''
                 },
                 body: JSON.stringify({ project: projectIdea })
             });
@@ -36,8 +40,13 @@ const ProjectPlanner = ({ onBack, onFindFixer }) => {
             }
 
             // Extract text from Google's response structure
-            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No plan generated.";
+            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!resultText) {
+                setPlanResult("No plan was returned. Please try again.");
+                return;
+            }
             setPlanResult(resultText);
+            setPlanSucceeded(true);
 
         } catch (error) {
             console.error("Backend Error:", error);
@@ -70,7 +79,7 @@ const ProjectPlanner = ({ onBack, onFindFixer }) => {
                             <div className="sl-ai-card rounded-2xl p-4 border border-white/50 text-[#172335] shadow-sm">
                                 <h3 className="font-bold text-sm mb-2">What are we building?</h3>
                                 <p className="text-xs font-medium text-gray-700 mb-4">
-                                    Describe your renovation, repair, or building idea. The AI will map out the steps and tell you exactly who you need to hire.
+                                    Describe your renovation, repair, or building idea. The AI can suggest steps and service types to consider.
                                 </p>
 
                                 <textarea
@@ -99,7 +108,7 @@ const ProjectPlanner = ({ onBack, onFindFixer }) => {
                             <div className="flex items-center gap-2 border-b border-black/5 pb-3">
                                 <span className="section-badge bg-[#c8a97a]/20 text-lg">📋</span>
                                 <div>
-                                    <h3 className="font-bold text-sm">Your Project Blueprint</h3>
+                                    <h3 className="font-bold text-sm">{planSucceeded ? 'Your Project Blueprint' : 'Planner unavailable'}</h3>
                                     <p className="text-[10px] uppercase tracking-widest text-gray-500 font-bold mt-0.5">Step-by-step breakdown</p>
                                 </div>
                             </div>
@@ -108,15 +117,15 @@ const ProjectPlanner = ({ onBack, onFindFixer }) => {
                                 {planResult}
                             </div>
 
-                            <div className="mt-2 text-center border-t border-black/10 pt-4">
+                            {planSucceeded && (catalogCategories ? <AiProviderSuggestion categories={catalogCategories} resultText={planResult} onSelectCategory={onSelectCategory} /> : <div className="mt-2 text-center border-t border-black/10 pt-4">
                                 <p className="text-xs text-gray-500 font-bold mb-3">Ready to start step 1?</p>
                                 <button onClick={onFindFixer} className="sl-ai-primary py-3 w-full text-xs">
                                     Browse Professionals
                                 </button>
-                                <button onClick={() => setPlanResult("")} className="mt-3 text-xs font-bold text-[#0965e8] active:opacity-70 transition-opacity">
-                                    Plan another project
-                                </button>
-                            </div>
+                            </div>)}
+                            <button onClick={() => { setPlanResult(""); setPlanSucceeded(false); }} className="mt-3 text-xs font-bold text-[#0965e8] active:opacity-70 transition-opacity">
+                                Plan another project
+                            </button>
                         </div>
                     )}
                 </div>

@@ -2,6 +2,9 @@ import './DesktopDashboard.css';
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, router } from '@inertiajs/react';
 import ReviewModal from '../../Components/ReviewModal';
+import ServiceCatalog from './ServiceCatalog';
+import { filterProvidersBySearch } from './catalog';
+import JobContextFields from './JobContextFields';
 
 /* ─────────────────────────────────────────────────────────────
    LIQUID GLASS — SkillLink Dashboard  (warm earth-tone palette)
@@ -12,21 +15,6 @@ import ReviewModal from '../../Components/ReviewModal';
 
 
 // ── Category palette ─────────────────────────────────────────
-const CAT_COLORS = [
-    { bg: 'rgba(176,125,74,0.18)',  emoji: '🔧' },
-    { bg: 'rgba(100,160,120,0.18)', emoji: '⚡' },
-    { bg: 'rgba(180,140,80,0.18)',  emoji: '🪚' },
-    { bg: 'rgba(150,110,180,0.18)', emoji: '🔌' },
-    { bg: 'rgba(80,160,200,0.18)',  emoji: '❄️' },
-    { bg: 'rgba(200,120,80,0.18)',  emoji: '🧱' },
-    { bg: 'rgba(100,180,160,0.18)', emoji: '🎨' },
-    { bg: 'rgba(200,170,100,0.18)', emoji: '🧹' },
-    { bg: 'rgba(80,170,100,0.18)',  emoji: '🌿' },
-    { bg: 'rgba(70,140,200,0.18)',  emoji: '💻' },
-    { bg: 'rgba(180,100,140,0.18)', emoji: '🧵' },
-    { bg: 'rgba(140,110,90,0.18)',  emoji: '👟' },
-];
-
 // ── Small icon components ────────────────────────────────────
 const ChevronDown = ({ size = 14 }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -54,23 +42,26 @@ const DesktopDashboard = ({
     selectedCategory,
     onSelectCategory,
     repairers,
+    pilotAreas = {}, jobContext, onJobContextChange, suggestionsLoading = false, suggestionsError = '',
     onRepairerSelect,
     topServices,
     onSwitchToWork,
     conversations = [],
     history = [],
+    completionJobs = [],
     pendingReviewsCount = 0,
 }) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [activeTab, setActiveTab]           = useState('browse');
     const [reviewingJob, setReviewingJob]     = useState(null);
+    const [search, setSearch] = useState('');
+    const visibleRepairers = filterProvidersBySearch(repairers, categories, search);
 
     const handleLogout   = () => router.post('/logout');
     const handleOpenChat = (bookingId) => {
         if (!bookingId) return alert('Error: Booking ID missing.');
         router.visit(`/test-chat/${bookingId}`);
     };
-    const unreadCount = conversations.filter(c => c.unread_count > 0).length;
 
     // ── Close dropdown on outside click ─────────────────────
     const dropdownRef = useRef(null);
@@ -84,14 +75,13 @@ const DesktopDashboard = ({
     }, []);
 
     // ── Category icon resolver ───────────────────────────────
-    const getCatStyle = (index) => CAT_COLORS[index % CAT_COLORS.length];
 
     // ── Sub-views ────────────────────────────────────────────
 
     const renderBrowse = () => (
         <>
             {/* Hero */}
-            {!selectedCategory && (
+            {!selectedCategory && !search.trim() && (
                 <div className="hero-card fade-up" style={{ marginBottom: 28 }}>
                     <div style={{ position: 'relative', zIndex: 1 }}>
                         <p style={{ fontSize: 13, fontWeight: 600, color: 'rgba(200,169,122,0.85)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -121,34 +111,17 @@ const DesktopDashboard = ({
             )}
 
             {/* Categories */}
-            {!selectedCategory && (
-                <div className="fade-up delay-1" style={{ marginBottom: 32 }}>
+            <div className="fade-up delay-1" style={{ marginBottom: 32 }}>
                     <div className="section-title">
                         <span className="section-badge">📂</span>
-                        Categories
+                        Services
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 12 }}>
-                        {categories.map((cat, index) => {
-                            const style = getCatStyle(index);
-                            return (
-                                <button key={index} className="cat-tile" onClick={() => onSelectCategory(cat)}>
-                                    <div className="cat-icon-wrap" style={{ background: style.bg }}>
-                                        <span style={{ position: 'relative', zIndex: 1 }}>
-                                            {cat.icon || style.emoji}
-                                        </span>
-                                    </div>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--espresso)', textAlign: 'center', lineHeight: 1.3 }}>
-                                        {cat.name}
-                                    </span>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
+                    <ServiceCatalog categories={categories} selectedCategory={selectedCategory} onSelectCategory={onSelectCategory} />
+                    <input type="search" aria-label="Search providers or services" placeholder="Search providers or services" value={search} onChange={event => setSearch(event.target.value)} className="mt-4 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-800" />
+            </div>
 
             {/* Top Services */}
-            {!selectedCategory && (
+            {!selectedCategory && !search.trim() && (
                 <div className="fade-up delay-2">
                     <div className="section-title">
                         <span className="section-badge">⭐</span>
@@ -189,23 +162,24 @@ const DesktopDashboard = ({
             )}
 
             {/* Repairer list */}
-            {selectedCategory && (
+            {(selectedCategory || search.trim()) && (
                 <div className="fade-up">
+                    {selectedCategory && <div style={{ maxWidth: 720, marginBottom: 20 }}><JobContextFields value={jobContext} onChange={onJobContextChange} pilotAreas={pilotAreas} accountLocation={user?.location} /></div>}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
                         <button className="back-btn" onClick={() => onSelectCategory(null)}>
                             <ChevronLeft/>
                         </button>
                         <div>
                             <h2 style={{ fontSize: 22, fontWeight: 800, color: 'var(--espresso)', margin: 0 }}>
-                                {selectedCategory.name} Experts
+                                {selectedCategory ? `Suggested providers for ${selectedCategory.name}` : 'Search results'}
                             </h2>
                             <p style={{ fontSize: 12, color: 'var(--mocha)', margin: '2px 0 0', fontWeight: 500 }}>
-                                Found {repairers.length} professionals
+                                {selectedCategory && !jobContext.area ? 'Choose the job area to see providers' : suggestionsLoading && selectedCategory ? 'Loading suggested providers…' : `Found ${visibleRepairers.length} providers`}
                             </p>
                         </div>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
-                        {repairers.length === 0 ? (
+                        {selectedCategory && suggestionsError ? <p role="alert">{suggestionsError}</p> : selectedCategory && (!jobContext.area || suggestionsLoading) ? null : visibleRepairers.length === 0 ? (
                             <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
                                 <div style={{ fontSize: 52, marginBottom: 12 }}>🕵️</div>
                                 <h3 style={{ fontWeight: 800, color: 'var(--espresso)', marginBottom: 4 }}>No repairers found</h3>
@@ -213,7 +187,7 @@ const DesktopDashboard = ({
                                     View All Categories
                                 </button>
                             </div>
-                        ) : repairers.map((repairer) => (
+                        ) : visibleRepairers.map((repairer) => (
                             <div key={repairer.id} className="repairer-card" onClick={() => onRepairerSelect(repairer)}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                                     <div className="avatar-lg">
@@ -234,7 +208,7 @@ const DesktopDashboard = ({
                                             </div>
                                         </div>
                                         <p style={{ fontSize: 12, color: 'var(--mocha)', margin: '4px 0 0', fontWeight: 500 }}>
-                                            📍 {repairer.location?.address || 'Davao City'}
+                                            📍 {repairer.repairer_profile.location?.address || 'Location not provided'}
                                         </p>
                                     </div>
                                 </div>
@@ -248,6 +222,7 @@ const DesktopDashboard = ({
                                         </span>
                                     )}
                                 </div>
+                                {repairer.suggestion && <p style={{ color: '#475569', fontSize: 12, marginTop: 10 }}>Service match · {repairer.suggestion.distance_km === null ? 'Distance unavailable' : `about ${repairer.suggestion.distance_km} km straight-line`} · {repairer.suggestion.availability === 'not_checked' ? 'Availability not assessed' : repairer.suggestion.availability === 'available' ? 'Available at selected time' : 'Unavailable at selected time'}</p>}
                             </div>
                         ))}
                     </div>
@@ -274,7 +249,6 @@ const DesktopDashboard = ({
                         <div className="avatar-lg">
                             <img src={`https://ui-avatars.com/api/?name=${chat.other_user_name}&background=random`} style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
                         </div>
-                        {chat.unread_count > 0 && <div className="unread-dot"/>}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
@@ -285,7 +259,7 @@ const DesktopDashboard = ({
                             Job #{chat.booking_id} · {chat.service_type}
                         </p>
                         <p style={{ fontSize: 13, color: 'var(--mocha)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {chat.last_message_content}
+                            {chat.last_message_content ?? 'No messages yet'}
                         </p>
                     </div>
                 </div>
@@ -299,7 +273,12 @@ const DesktopDashboard = ({
                 <span className="section-badge">📂</span>
                 Job History
             </div>
-            {history.length === 0 ? (
+            {completionJobs.map(job => <div key={job.id} className="list-row" style={{ display: 'block', marginBottom: 12 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700 }}>{job.service_type}</h3>
+                <p style={{ fontSize: 12 }}>{job.status === 'completion_disputed' ? 'Issue reported — awaiting provider response' : 'Work needs your confirmation'}</p>
+                <button type="button" className="btn-caramel" onClick={() => router.visit(`/bookings/${job.id}`)}>View completion details</button>
+            </div>)}
+            {history.length === 0 && completionJobs.length === 0 ? (
                 <div className="empty-state">
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
                     <p style={{ color: 'var(--mocha)', fontWeight: 600, marginBottom: 4 }}>No job history found.</p>
@@ -323,11 +302,12 @@ const DesktopDashboard = ({
                         </p>
                     </div>
                     <div style={{ flexShrink: 0 }}>
-                        {!job.review ? (
+                        <button type="button" className="btn-caramel" onClick={() => router.visit(`/bookings/${job.id}`)}>Work & payment details</button>
+                        {job.client_accepted_at && !job.review ? (
                             <button className="btn-caramel" onClick={(e) => { e.stopPropagation(); setReviewingJob(job); }}>
                                 ⭐ Leave a Review
                             </button>
-                        ) : (
+                        ) : job.review ? (
                             <div style={{
                                 padding: '8px 16px', borderRadius: 12,
                                 background: 'rgba(245,237,224,0.60)',
@@ -336,7 +316,7 @@ const DesktopDashboard = ({
                             }}>
                                 Rated {job.review.rating} ★
                             </div>
-                        )}
+                        ) : null}
                     </div>
                 </div>
             ))}
@@ -376,11 +356,6 @@ const DesktopDashboard = ({
                                     onClick={() => setActiveTab('chats')}
                                     style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     Messages
-                                    {unreadCount > 0 && (
-                                        <span style={{ background: '#e05252', color: '#fff', borderRadius: 999, fontSize: 10, fontWeight: 800, padding: '1px 6px' }}>
-                                            {unreadCount}
-                                        </span>
-                                    )}
                                 </button>
                                 <button className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
                                     onClick={() => setActiveTab('history')}
