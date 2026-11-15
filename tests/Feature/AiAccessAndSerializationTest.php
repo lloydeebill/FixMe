@@ -77,6 +77,25 @@ class AiAccessAndSerializationTest extends TestCase
         Http::assertSentCount(1);
     }
 
+    public function test_scanner_sends_the_actual_png_mime_type_and_rejects_a_mismatch(): void
+    {
+        $this->actingAs($this->user());
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/cV8AAAAASUVORK5CYII=';
+        Http::fake(['generativelanguage.googleapis.com/*' => Http::response([
+            'candidates' => [['content' => ['parts' => [['text' => 'NEED AN EXPERT? Ask a plumber.']]]]],
+        ])]);
+
+        $this->postJson('/api/scan-problem', ['image' => $png, 'mime_type' => 'image/png'])
+            ->assertOk()
+            ->assertJsonPath('candidates.0.content.parts.0.text', 'NEED AN EXPERT? Ask a plumber.');
+        Http::assertSent(fn ($request) => data_get($request->data(), 'contents.0.parts.1.inline_data.mime_type') === 'image/png');
+
+        $this->postJson('/api/scan-problem', ['image' => $png, 'mime_type' => 'image/jpeg'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('image');
+        Http::assertSentCount(1);
+    }
+
     public function test_google_tokens_remain_server_side_and_are_hidden_from_user_and_inertia_serialization(): void
     {
         $user = $this->user();
