@@ -79,6 +79,8 @@ export default function Settings({ hasGcashQr = false, accountLocation, provider
                         <Link href="/provider/tesda-qualifications" className="mt-4 inline-block rounded-xl bg-[#0965e8] px-4 py-3 text-sm font-semibold text-white">Manage qualifications</Link>
                     </div>}
 
+                    {user.is_admin && <div className={`${compactMobileView ? 'hidden sm:block ' : ''}rounded-2xl border border-gray-100 bg-white p-5 sm:p-8`}><h3 className="text-lg font-semibold">Qualification review</h3><p className="mt-2 text-sm text-gray-500">Review submitted images and record a manual SkillLink registry outcome.</p><Link href="/admin/qualifications" className="mt-4 inline-block rounded-xl bg-[#0965e8] px-4 py-3 text-sm font-semibold text-white">Open review queue</Link></div>}
+
                     {user.is_repairer && <section className={`${clientProfileView || providerProfileView ? 'hidden sm:block ' : ''}rounded-2xl border border-gray-100 bg-white p-5 sm:p-8`} aria-label="GCash QR settings">
                         <h3 className="text-lg font-semibold">GCash payment QR</h3>
                         <p className="mt-2 text-sm text-gray-500">Clients can view this QR only after accepting completed work and choosing external GCash payment. SkillLink does not verify transfers.</p>

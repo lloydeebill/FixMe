@@ -54,7 +54,7 @@ class GeminiController extends Controller
      */
     public function plan(Request $request)
     {
-        $request->validate(['project' => 'required|string']);
+        $request->validate(['project' => 'required|string|max:2000']);
 
         $payload = [
             'contents' => [[
@@ -81,7 +81,7 @@ class GeminiController extends Controller
      */
     private function callGemini($payload, $model = 'gemini-3.1-flash-lite')
     {
-        $apiKey = config('services.gemini.key') ?? env('GEMINI_API_KEY');
+        $apiKey = config('services.gemini.key');
 
         if (!$apiKey) {
             Log::warning('Gemini request unavailable: API key is not configured.', ['model' => $model]);

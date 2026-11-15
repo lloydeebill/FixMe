@@ -23,6 +23,7 @@ use App\Models\Conversation;
 use App\Models\Booking;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\TesdaQualificationController;
+use App\Http\Controllers\AdminQualificationController;
 use App\Http\Controllers\Api\GeminiController;
 use App\Http\Controllers\AccountProfileController;
 use App\Http\Controllers\NotificationController;
@@ -141,6 +142,12 @@ Route::middleware(['auth'])->group(function () {
       Route::get('/{qualification}/image', [TesdaQualificationController::class, 'image'])->name('image');
       Route::post('/{qualification}/retry', [TesdaQualificationController::class, 'retry'])->middleware('throttle:10,1')->name('retry');
       Route::delete('/{qualification}', [TesdaQualificationController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::prefix('admin/qualifications')->name('admin.qualifications.')->middleware('throttle:30,1')->group(function () {
+      Route::get('/', [AdminQualificationController::class, 'index'])->name('index');
+      Route::get('/{qualification}/image', [AdminQualificationController::class, 'image'])->name('image');
+      Route::post('/{qualification}/review', [AdminQualificationController::class, 'review'])->name('review');
     });
 
     // --- REPAIRER UPGRADE (For existing customers) ---

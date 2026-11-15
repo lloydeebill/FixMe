@@ -86,7 +86,6 @@ class TesdaCertificateScreening
             $details = array_intersect_key($validated, array_flip(array_merge(['document_type'], $fields)));
             $qualification->update([
                 'processing_status' => $issues || $validated['document_type'] === 'uncertain' ? 'needs_clarification' : 'screening_complete',
-                'verification_status' => 'pending',
                 'extracted_details' => $details,
                 'issues' => array_values(array_unique($issues)),
                 'failure_reason' => null,
@@ -94,7 +93,6 @@ class TesdaCertificateScreening
         } catch (Throwable $error) {
             $qualification->update([
                 'processing_status' => 'processing_failed',
-                'verification_status' => 'pending',
                 'failure_reason' => $error instanceof RuntimeException ? $error->getMessage() : 'Screening could not finish. Please retry later.',
             ]);
         }

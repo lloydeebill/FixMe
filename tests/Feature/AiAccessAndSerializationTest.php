@@ -49,6 +49,17 @@ class AiAccessAndSerializationTest extends TestCase
         Http::assertSentCount(10);
     }
 
+    public function test_missing_configured_key_returns_503_without_an_upstream_request(): void
+    {
+        $this->actingAs($this->user());
+        config()->set('services.gemini.key', null);
+        Http::fake();
+
+        $this->postJson('/api/plan-project', ['project' => 'Repair a sink'])
+            ->assertStatus(503)->assertExactJson(['error' => 'AI service is temporarily unavailable.']);
+        Http::assertNothingSent();
+    }
+
     public function test_upstream_failure_returns_and_logs_only_safe_details(): void
     {
         $this->actingAs($this->user());

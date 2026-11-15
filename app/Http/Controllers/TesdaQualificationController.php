@@ -69,6 +69,7 @@ class TesdaQualificationController extends Controller
     {
         $qualification = $this->owned($request, $qualification);
         abort_if($qualification->processing_status === 'processing', 409);
+        abort_if($qualification->verification_status !== 'pending', 409);
         $path = $qualification->image_path;
         $qualification->delete();
         Storage::disk('local')->delete($path);

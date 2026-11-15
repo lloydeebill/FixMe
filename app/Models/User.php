@@ -31,6 +31,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'google_calendar_token',
         'google_refresh_token',
         'google_token_expires_in',
+        'is_admin',
     ];
 
     protected $hidden = [
@@ -46,6 +47,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
         ];
     }
 

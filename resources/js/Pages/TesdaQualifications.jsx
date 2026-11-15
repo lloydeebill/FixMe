@@ -14,6 +14,12 @@ const labels = {
     uploaded: 'Uploaded', processing: 'Processing', screening_complete: 'Screening complete',
     needs_clarification: 'Needs clarification', processing_failed: 'Processing failed',
 };
+const reviewLabels = {
+    pending: 'Awaiting manual SkillLink review',
+    registry_match: 'Registry match recorded by SkillLink',
+    unconfirmed: 'Unable to confirm in registry',
+    follow_up: 'Expiry or follow-up needed',
+};
 
 export default function TesdaQualifications({ qualifications = [] }) {
     const { data, setData, post, processing, errors, reset } = useForm({ certificate: null, consent: false });
@@ -83,7 +89,10 @@ export default function TesdaQualifications({ qualifications = [] }) {
                             <div><h3 className="font-semibold">Qualification #{item.id}</h3><p className="mt-1 text-xs text-[#647084]">Submitted {new Date(item.created_at).toLocaleDateString()}</p></div>
                             <span className="rounded-full bg-[#edf4ff] px-3 py-1 text-xs font-semibold text-[#0965e8]">{labels[item.processing_status]}</span>
                         </div>
-                        <p className="mt-3 text-xs font-medium text-[#647084]">Verification: Pending</p>
+                        <p className="mt-3 text-xs font-medium text-[#647084]">SkillLink review: {reviewLabels[item.verification_status] || 'Awaiting manual review'}</p>
+                        {item.reviewed_at && <p className="mt-1 text-xs text-[#647084]">Reviewed {new Date(item.reviewed_at).toLocaleString()}</p>}
+                        {item.review_note && <p className="mt-2 rounded-xl bg-[#edf4ff] p-3 text-sm text-[#172335]">{item.review_note}</p>}
+                        {item.verification_status !== 'pending' && <p className="mt-2 text-xs text-[#647084]">This is SkillLink’s review record, not official TESDA certification.</p>}
                         <a href={`/provider/tesda-qualifications/${item.id}/image`} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#0965e8]">View private image</a>
                         {item.extracted_details && <dl className="mt-4 space-y-2 border-t border-[#e3e8ef] pt-4 text-sm">
                             {fields.map(([key, label]) => <div key={key} className="grid grid-cols-2 gap-3"><dt className="text-[#647084]">{label}</dt><dd className="break-words font-medium">{item.extracted_details[key] || 'Not readable'}</dd></div>)}
@@ -92,7 +101,7 @@ export default function TesdaQualifications({ qualifications = [] }) {
                         {item.failure_reason && <p role="alert" className="mt-4 text-sm text-red-700">{item.failure_reason}</p>}
                         <div className="mt-5 flex flex-wrap gap-3">
                             {item.processing_status === 'processing_failed' && <button type="button" onClick={() => router.post(`/provider/tesda-qualifications/${item.id}/retry`)} className="rounded-xl bg-[#0965e8] px-4 py-2 text-sm font-semibold text-white">Retry screening</button>}
-                            <button type="button" onClick={() => { if (window.confirm('Delete this submission and its image?')) router.delete(`/provider/tesda-qualifications/${item.id}`); }} className="rounded-xl border border-[#e3e8ef] px-4 py-2 text-sm font-semibold text-red-700">Delete</button>
+                            {item.verification_status === 'pending' && <button type="button" onClick={() => { if (window.confirm('Delete this submission and its image?')) router.delete(`/provider/tesda-qualifications/${item.id}`); }} className="rounded-xl border border-[#e3e8ef] px-4 py-2 text-sm font-semibold text-red-700">Delete</button>}
                         </div>
                     </article>)}
                 </div>

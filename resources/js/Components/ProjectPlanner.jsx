@@ -35,12 +35,18 @@ const ProjectPlanner = ({ onBack, onFindFixer, catalogCategories, onSelectCatego
 
             const data = await response.json();
 
-            if (!response.ok) {
-                throw new Error(data.error || "Failed to generate plan");
+            if (!response.ok || data.error) {
+                setPlanResult(response.status === 401 ? 'Please sign in again to use the planner.'
+                    : response.status === 419 ? 'Your session expired. Refresh the page and try again.'
+                    : response.status === 429 ? 'Too many requests right now. Wait a minute and try again.'
+                    : 'The AI service is temporarily unavailable. Please try again later.');
+                return;
             }
 
             // Extract text from Google's response structure
-            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const resultText = data.candidates?.[0]?.content?.parts
+                ?.filter(part => !part.thought && typeof part.text === 'string')
+                .map(part => part.text).join('\n').trim();
             if (!resultText) {
                 setPlanResult("No plan was returned. Please try again.");
                 return;
@@ -48,8 +54,7 @@ const ProjectPlanner = ({ onBack, onFindFixer, catalogCategories, onSelectCatego
             setPlanResult(resultText);
             setPlanSucceeded(true);
 
-        } catch (error) {
-            console.error("Backend Error:", error);
+        } catch {
             setPlanResult("System busy. Please try again in a moment.");
         } finally {
             setIsPlanning(false);
