@@ -13,6 +13,7 @@ export default function RepairerMobile({
     profile,
     jobs = [],
     schedule = [],
+    isGoogleConnected = false,
     conversations = [],
     notifications = [],
     unreadNotificationsCount = 0,
@@ -78,7 +79,7 @@ export default function RepairerMobile({
     const saveSchedule = () => {
         put('/repairer/availability', {
             preserveScroll: true,
-            onSuccess: () => alert('Availability Updated!')
+            onSuccess: () => alert('Weekly availability saved in SkillLink. This does not create Google Calendar events.')
         });
     };
 
@@ -381,6 +382,11 @@ export default function RepairerMobile({
 
     const ScheduleView = () => (
         <div className="px-4 pb-24 pt-4">
+            <div className="mb-4 rounded-xl border border-[#e3e8ef] bg-white p-4">
+                <h3 className="font-bold text-[#172335]">Google Calendar (optional)</h3>
+                <p className="mt-1 text-sm text-gray-600">Weekly availability stays in SkillLink. Accepted bookings can be added to your Google Calendar after you connect it.</p>
+                {isGoogleConnected ? <p className="mt-3 text-sm font-semibold text-green-700">Calendar connected</p> : <a href="/auth/calendar/connect" className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-[#0965e8] px-4 text-sm font-semibold text-white">Connect Google Calendar</a>}
+            </div>
             <div className="bg-white p-4 rounded-xl shadow-sm border border-[#e3e8ef]">
                 <h3 className="font-bold text-lg mb-4 text-[#172335]">Weekly Availability</h3>
                 {data.schedule.map((day, index) => (

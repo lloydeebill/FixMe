@@ -521,7 +521,7 @@ export default function RepairerDesktop({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
              <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#e3e8ef] h-fit">
                 <h3 className="font-bold text-lg mb-2 text-[#172335]">Calendar Sync</h3>
-                <p className="text-sm text-gray-500 mb-6">Connect your Google Calendar to automatically block off times when you are busy.</p>
+                <p className="text-sm text-gray-500 mb-6">Weekly availability is saved in SkillLink. Connect Calendar to add accepted bookings to Google Calendar; this does not block busy times automatically.</p>
                 {isGoogleConnected ? (
                     <div className="flex items-center gap-2 text-green-700 font-bold bg-green-50 p-3 rounded-lg"><span>✓</span> Google Calendar Connected</div>
                 ) : (
@@ -560,19 +560,6 @@ export default function RepairerDesktop({
             </div>
         </div>
     );
-
-    if (!isGoogleConnected) {
-        return (
-            <div className="skilllink-screen min-h-screen bg-[#f4f6f8] flex items-center justify-center">
-                <div className="bg-white p-10 rounded-2xl shadow-sm max-w-lg text-center border border-[#e3e8ef]">
-                    <div className="w-20 h-20 bg-[#edf4ff] text-[#172335] rounded-full flex items-center justify-center text-4xl mx-auto mb-6">📅</div>
-                    <h1 className="text-3xl font-semibold text-[#172335] mb-3">One Last Step!</h1>
-                    <p className="text-gray-500 mb-8 text-lg">Welcome to the Pro Team, <strong>{user.name}</strong>.<br/>Please connect your Google Calendar to synchronize your availability.</p>
-                    <a href="/auth/calendar/connect" className="block w-full bg-[#0965e8] text-white text-lg font-bold py-4 rounded-xl hover:bg-[#0753be] transition-transform hover:scale-105">Connect Calendar & Continue →</a>
-                </div>
-            </div>
-        );
-    }
 
     // --- MAIN LAYOUT ---
     return (

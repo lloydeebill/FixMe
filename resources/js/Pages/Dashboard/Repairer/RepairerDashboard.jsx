@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Head, router } from '@inertiajs/react';
+import { Head, router, usePage } from '@inertiajs/react';
 import RepairerMobile from './RepairerMobile';
 import RepairerDesktop from './RepairerDesktop';
 
@@ -16,6 +16,7 @@ export default function RepairerDashboard({
     jobCounts = { pending: 0, active: 0, completed: 0 },
     onOpenNotification,
 }) {
+    const { flash } = usePage().props;
     const [jobs, setJobs] = useState(initialJobs);
     const [actionBusy, setActionBusy] = useState(false);
     const [actionFeedback, setActionFeedback] = useState(null);
@@ -37,14 +38,15 @@ export default function RepairerDashboard({
         router.post(`/bookings/${id}/${action}`, {}, {
             preserveScroll: true,
             onSuccess: page => {
-                setActionFeedback({ kind: 'success', text: page.props.flash?.message || fallback });
+                const flash = page.props.flash;
+                setActionFeedback({ kind: flash?.error ? 'error' : 'success', text: flash?.error ? `${flash.message || fallback} ${flash.error}` : flash?.message || fallback });
                 onSaved?.();
             },
             onError: errors => setActionFeedback({ kind: 'error', text: Object.values(errors)[0] || 'Please try again.' }),
             onFinish: () => setActionBusy(false),
         });
     };
-    const handleApprove = (id, onSaved) => submitJobAction(id, 'approve', 'Accept this job and sync to Google Calendar?', 'Job accepted.', onSaved);
+    const handleApprove = (id, onSaved) => submitJobAction(id, 'approve', 'Accept this job? Google Calendar sync is optional.', 'Job accepted.', onSaved);
 
     // 2. REJECT HANDLER
     const handleReject = (id, onSaved) => submitJobAction(id, 'reject', 'Are you sure you want to decline this request?', 'Request declined.', onSaved);
@@ -62,6 +64,7 @@ export default function RepairerDashboard({
     return (
         <>
             <Head title="Work Dashboard" />
+            {!actionFeedback && (flash?.message || flash?.error) && <p role={flash?.error ? 'alert' : 'status'} className={`mx-auto max-w-5xl rounded-xl p-3 text-sm ${flash?.error ? 'bg-amber-50 text-amber-900' : 'bg-green-50 text-green-800'}`}>{flash?.error || flash?.message}</p>}
 
             {/* 1. MOBILE VIEW */}
             <div className="block md:hidden">

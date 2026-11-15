@@ -26,17 +26,19 @@ class GoogleCalendarController extends Controller
 
             $user = Auth::user();
 
-            $user->update([
-                'google_calendar_token' => $googleUser->token,
-                'google_refresh_token' => $googleUser->refreshToken,
-            ]);
+            $tokens = ['google_calendar_token' => $googleUser->token];
+            if ($googleUser->refreshToken) {
+                $tokens['google_refresh_token'] = $googleUser->refreshToken;
+            }
+            $user->update($tokens);
 
             return redirect()->route('dashboard')
-                ->with('success', 'Google Calendar successfully connected!');
-        } catch (\Exception $e) {
-            // Error handling
+                ->with($user->google_refresh_token ? 'message' : 'error', $user->google_refresh_token
+                    ? 'Google Calendar connected. Accepted bookings can be added from Booking Details.'
+                    : 'Google did not provide offline Calendar access. Please try connecting again.');
+        } catch (\Throwable $e) {
             return redirect()->route('dashboard')
-                ->with('error', 'Failed to connect: ' . $e->getMessage());
+                ->with('error', 'Could not connect Google Calendar. Please try again.');
         }
     }
 }

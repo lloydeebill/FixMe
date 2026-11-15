@@ -107,6 +107,7 @@ Route::middleware(['auth'])->group(function () {
     // --- BOOKINGS ---
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
     Route::post('/bookings/{id}/approve', [BookingController::class, 'approve'])->name('bookings.approve');
+    Route::post('/bookings/{id}/sync-calendar', [BookingController::class, 'syncCalendarEvent'])->middleware('throttle:6,1')->name('bookings.sync-calendar');
     Route::post('/bookings/{id}/reject', [BookingController::class, 'reject'])->name('bookings.reject');
     Route::post('/bookings/{id}/complete', [BookingController::class, 'complete'])->name('bookings.complete');
     Route::get('/bookings/{id}', [BookingWorkflowController::class, 'show'])->name('bookings.show');

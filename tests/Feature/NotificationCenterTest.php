@@ -84,7 +84,7 @@ class NotificationCenterTest extends TestCase
         $this->get('/app')->assertInertia(fn (Assert $page) => $page->where('unreadNotificationsCount', 0)->etc());
         $this->actingAs($other)->get('/app')->assertInertia(fn (Assert $page) => $page->missing('notifications.0')->etc());
 
-        $this->actingAs($provider)->post("/bookings/{$booking->id}/approve")->assertRedirect()->assertSessionHas('message', 'Job Accepted, Chat Started & Synced!');
+        $this->actingAs($provider)->post("/bookings/{$booking->id}/approve")->assertRedirect()->assertSessionHas('message', 'Job accepted. The client conversation is ready.');
         $this->post("/bookings/{$booking->id}/approve")->assertSessionHasErrors();
         $this->assertDatabaseCount('user_notifications', 2);
         $this->assertDatabaseHas('user_notifications', ['user_id' => $client->user_id, 'type' => 'booking_approved']);

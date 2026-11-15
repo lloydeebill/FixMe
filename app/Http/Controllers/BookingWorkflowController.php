@@ -63,6 +63,7 @@ class BookingWorkflowController extends Controller
         return Inertia::render('BookingDetails', [
             'booking' => $booking,
             'participantRole' => $role,
+            'isGoogleConnected' => $role === 'provider' && (bool) $request->user()->google_refresh_token,
             'hasGcashQr' => (bool) $booking->repairerProfile?->gcash_qr_path,
             'serviceLocation' => $serviceLocation,
             'distanceKm' => $distanceKm === null ? null : round($distanceKm, 1),

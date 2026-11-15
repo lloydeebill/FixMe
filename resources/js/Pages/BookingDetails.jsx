@@ -4,7 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import ReviewModal from '../Components/ReviewModal';
 import BookingLocationsMap from './Dashboard/BookingLocationsMap';
 
-export default function BookingDetails({ booking, participantRole, hasGcashQr, serviceLocation, providerLocation, distanceKm }) {
+export default function BookingDetails({ booking, participantRole, hasGcashQr, serviceLocation, providerLocation, distanceKm, isGoogleConnected }) {
     const returnQuery = new URLSearchParams(window.location.search);
     const backUrl = returnQuery.get('from') === 'notifications'
         ? `/app?tab=notifications${returnQuery.get('mode') === 'client' ? '&mode=client' : ''}`
@@ -31,7 +31,10 @@ export default function BookingDetails({ booking, participantRole, hasGcashQr, s
         setSuccess('');
         router.post(`/bookings/${booking.id}/${suffix}`, data, {
             preserveScroll: true,
-            onSuccess: page => setSuccess(page.props.flash?.message || 'Action saved.'),
+            onSuccess: page => {
+                if (page.props.flash?.error) setError(page.props.flash.error);
+                else setSuccess(page.props.flash?.message || 'Action saved.');
+            },
             onError: errors => setError(Object.values(errors)[0] || 'Please try again.'),
             onFinish: () => setBusy(false),
         });
@@ -50,6 +53,14 @@ export default function BookingDetails({ booking, participantRole, hasGcashQr, s
                 <p className="mt-2 text-sm text-[#647084]">{booking.repairer_profile?.business_name || 'Service provider'} · {new Date(booking.scheduled_at).toLocaleString()}</p>
                 <Link href={`/test-chat/${booking.id}`} className="mt-4 inline-flex min-h-11 items-center rounded-xl border border-[#cbdcf6] px-4 text-sm font-semibold text-[#0965e8]">Open conversation</Link>
             </section>
+
+            {!client && ['confirmed', 'in_progress', 'completion_requested', 'completion_disputed', 'completed'].includes(booking.status) && <section className="rounded-2xl border border-[#e3e8ef] bg-white p-5 sm:p-7">
+                <h2 className="text-lg font-semibold">Google Calendar (optional)</h2>
+                {booking.google_event_id ? <p className="mt-2 text-sm text-green-700">This booking was added to your Google Calendar. Guest updates were requested.</p> : <>
+                    <p className="mt-2 text-sm text-[#647084]">This booking is saved in SkillLink. Google Calendar is separate.</p>
+                    {isGoogleConnected ? <button type="button" disabled={busy} onClick={() => submit('sync-calendar')} className="mt-4 rounded-xl bg-[#0965e8] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">Add to Google Calendar</button> : <a href="/auth/calendar/connect" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#0965e8] px-4 py-3 text-sm font-semibold text-white">Connect Google Calendar</a>}
+                </>}
+            </section>}
 
             {serviceLocation && <section className="rounded-2xl border border-[#e3e8ef] bg-white p-5 sm:p-7">
                 <h2 className="text-lg font-semibold">Saved service locations</h2>
