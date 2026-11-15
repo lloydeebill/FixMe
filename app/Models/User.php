@@ -31,7 +31,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'google_calendar_token',
         'google_refresh_token',
         'google_token_expires_in',
-        'is_admin',
     ];
 
     protected $hidden = [

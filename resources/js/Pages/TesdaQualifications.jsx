@@ -20,6 +20,11 @@ const reviewLabels = {
     unconfirmed: 'Unable to confirm in registry',
     follow_up: 'Expiry or follow-up needed',
 };
+const registryResults = {
+    match_found: 'Matching registry entry observed', no_match: 'No matching entry found',
+    unavailable: 'Registry unavailable', expired: 'Entry indicates expiry',
+    needs_follow_up: 'Lookup needs follow-up',
+};
 
 export default function TesdaQualifications({ qualifications = [] }) {
     const { data, setData, post, processing, errors, reset } = useForm({ certificate: null, consent: false });
@@ -91,6 +96,7 @@ export default function TesdaQualifications({ qualifications = [] }) {
                         </div>
                         <p className="mt-3 text-xs font-medium text-[#647084]">SkillLink review: {reviewLabels[item.verification_status] || 'Awaiting manual review'}</p>
                         {item.reviewed_at && <p className="mt-1 text-xs text-[#647084]">Reviewed {new Date(item.reviewed_at).toLocaleString()}</p>}
+                        {item.registry_checked_on && <p className="mt-1 text-xs text-[#647084]">Admin-recorded registry lookup on {String(item.registry_checked_on).slice(0, 10)}: {registryResults[item.registry_result] || 'Result unavailable'}</p>}
                         {item.review_note && <p className="mt-2 rounded-xl bg-[#edf4ff] p-3 text-sm text-[#172335]">{item.review_note}</p>}
                         {item.verification_status !== 'pending' && <p className="mt-2 text-xs text-[#647084]">This is SkillLink’s review record, not official TESDA certification.</p>}
                         <a href={`/provider/tesda-qualifications/${item.id}/image`} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-semibold text-[#0965e8]">View private image</a>

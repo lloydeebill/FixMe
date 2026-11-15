@@ -21,8 +21,10 @@ class AdminQualificationController extends Controller
     {
         $this->authorizeAdmin($request);
 
-        $qualifications = TesdaQualification::with('repairerProfile.user')->latest()->limit(50)->get()
-            ->map(fn (TesdaQualification $item) => [
+        $qualifications = TesdaQualification::with(['repairerProfile.user', 'reviewHistory'])
+            ->orderByDesc('created_at')->orderByDesc('id')
+            ->paginate(20)->withQueryString()
+            ->through(fn (TesdaQualification $item) => [
                 'id' => $item->id,
                 'provider_name' => $item->repairerProfile?->user?->name,
                 'processing_status' => $item->processing_status,
@@ -32,6 +34,21 @@ class AdminQualificationController extends Controller
                 'failure_reason' => $item->failure_reason,
                 'reviewed_at' => $item->reviewed_at,
                 'review_note' => $item->review_note,
+                'registry_source' => $item->registry_source,
+                'registry_reference' => $item->registry_reference,
+                'registry_checked_on' => $item->registry_checked_on,
+                'registry_result' => $item->registry_result,
+                'review_history' => $item->reviewHistory->map(fn ($review) => [
+                    'id' => $review->id,
+                    'reviewer_id' => $review->reviewer_id,
+                    'outcome' => $review->outcome,
+                    'registry_source' => $review->registry_source,
+                    'registry_reference' => $review->registry_reference,
+                    'registry_checked_on' => $review->registry_checked_on,
+                    'registry_result' => $review->registry_result,
+                    'review_note' => $review->review_note,
+                    'reviewed_at' => $review->reviewed_at,
+                ]),
             ]);
 
         return Inertia::render('AdminQualifications', ['qualifications' => $qualifications]);
@@ -56,7 +73,29 @@ class AdminQualificationController extends Controller
         $validated = $request->validate([
             'status' => ['required', Rule::in(['registry_match', 'unconfirmed', 'follow_up'])],
             'note' => ['required', 'string', 'min:5', 'max:1000'],
+            'registry_source' => ['required', Rule::in(['2017_onward', '2016_earlier'])],
+            'registry_reference' => ['required', 'url', 'max:500', function ($attribute, $value, $fail) {
+                $parts = parse_url($value);
+                if (! is_array($parts) || strtolower($parts['scheme'] ?? '') !== 'https'
+                    || ! in_array(strtolower($parts['host'] ?? ''), ['tesda.gov.ph', 'www.tesda.gov.ph'], true)
+                    || ! (str_starts_with(strtolower($parts['path'] ?? ''), '/rwac')
+                        || strtolower($parts['path'] ?? '') === '/about/tesda/31')
+                    || isset($parts['user']) || isset($parts['pass'])) {
+                    $fail('Use an official HTTPS tesda.gov.ph registry page reference.');
+                }
+            }],
+            'registry_checked_on' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'registry_result' => ['required', Rule::in(['match_found', 'no_match', 'unavailable', 'expired', 'needs_follow_up'])],
         ]);
+
+        $compatible = [
+            'registry_match' => ['match_found'],
+            'unconfirmed' => ['no_match', 'unavailable'],
+            'follow_up' => ['expired', 'needs_follow_up'],
+        ];
+        if (! in_array($validated['registry_result'], $compatible[$validated['status']], true)) {
+            throw ValidationException::withMessages(['registry_result' => 'Choose a registry result consistent with the review outcome.']);
+        }
 
         DB::transaction(function () use ($qualification, $request, $validated) {
             $item = TesdaQualification::whereKey($qualification->id)->lockForUpdate()->firstOrFail();
@@ -68,14 +107,30 @@ class AdminQualificationController extends Controller
             if (! in_array($validated['status'], $allowed, true) || $item->processing_status === 'processing') {
                 throw ValidationException::withMessages(['status' => 'This qualification cannot move to that review outcome.']);
             }
+            $reviewedAt = now();
             $item->update([
                 'verification_status' => $validated['status'],
                 'review_note' => $validated['note'],
                 'reviewed_by' => $request->user()->user_id,
-                'reviewed_at' => now(),
+                'reviewed_at' => $reviewedAt,
+                'registry_source' => $validated['registry_source'],
+                'registry_reference' => $validated['registry_reference'],
+                'registry_checked_on' => $validated['registry_checked_on'],
+                'registry_result' => $validated['registry_result'],
+            ]);
+            DB::table('tesda_qualification_reviews')->insert([
+                'tesda_qualification_id' => $item->id,
+                'reviewer_id' => $request->user()->user_id,
+                'outcome' => $validated['status'],
+                'registry_source' => $validated['registry_source'],
+                'registry_reference' => $validated['registry_reference'],
+                'registry_checked_on' => $validated['registry_checked_on'],
+                'registry_result' => $validated['registry_result'],
+                'review_note' => $validated['note'],
+                'reviewed_at' => $reviewedAt,
             ]);
         });
 
-        return redirect()->route('admin.qualifications.index')->with('message', 'SkillLink review outcome recorded.');
+        return back()->with('message', 'SkillLink review outcome recorded.');
     }
 }
