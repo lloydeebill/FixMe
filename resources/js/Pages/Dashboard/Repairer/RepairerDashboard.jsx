@@ -10,44 +10,46 @@ export default function RepairerDashboard({
     schedule,
     isGoogleConnected,
     onSwitchToCustomer,
-    conversations = [] 
+    conversations = [],
+    notifications = [],
+    unreadNotificationsCount = 0,
+    jobCounts = { pending: 0, active: 0, completed: 0 },
+    onOpenNotification,
 }) {
     const [jobs, setJobs] = useState(initialJobs);
+    const [actionBusy, setActionBusy] = useState(false);
+    const [actionFeedback, setActionFeedback] = useState(null);
+    useEffect(() => {
+        if (!actionFeedback || actionFeedback.kind !== 'success') return;
+        const timer = window.setTimeout(() => setActionFeedback(null), 5000);
+        return () => window.clearTimeout(timer);
+    }, [actionFeedback]);
 
     useEffect(() => {
         setJobs(initialJobs);
     }, [initialJobs]);
 
     // 1. APPROVE HANDLER
-    const handleApprove = (id) => {
-        if (confirm("Accept this job and sync to Google Calendar?")) {
-            router.post(`/bookings/${id}/approve`, {}, {
-                onSuccess: () => alert("Job Accepted & Synced!"),
-                onError: () => alert("Something went wrong.")
-            });
-        }
+    const submitJobAction = (id, action, question, fallback, onSaved) => {
+        if (actionBusy || !confirm(question)) return;
+        setActionBusy(true);
+        setActionFeedback(null);
+        router.post(`/bookings/${id}/${action}`, {}, {
+            preserveScroll: true,
+            onSuccess: page => {
+                setActionFeedback({ kind: 'success', text: page.props.flash?.message || fallback });
+                onSaved?.();
+            },
+            onError: errors => setActionFeedback({ kind: 'error', text: Object.values(errors)[0] || 'Please try again.' }),
+            onFinish: () => setActionBusy(false),
+        });
     };
+    const handleApprove = (id, onSaved) => submitJobAction(id, 'approve', 'Accept this job and sync to Google Calendar?', 'Job accepted.', onSaved);
 
     // 2. REJECT HANDLER
-    const handleReject = (id) => {
-        if (confirm('Are you sure you want to decline this request?')) {
-            router.post(`/bookings/${id}/reject`, {}, {
-                onSuccess: () => alert("Request declined."),
-                onError: () => alert("Something went wrong.")
-            });
-        }
-    };
+    const handleReject = (id, onSaved) => submitJobAction(id, 'reject', 'Are you sure you want to decline this request?', 'Request declined.', onSaved);
 
-    // 3. 🆕 COMPLETE HANDLER (Add this!)
-    const handleComplete = (id) => {
-        if (confirm("Are you sure you want to mark this job as completed?")) {
-            // Note: This hits the 'complete' method we added to BookingController
-            router.post(`/bookings/${id}/complete`, {}, {
-                onSuccess: () => alert("Great work! Job moved to history."),
-                onError: () => alert("Could not complete job.")
-            });
-        }
-    };
+    const handleComplete = (id, onSaved) => submitJobAction(id, 'complete', 'Request client confirmation that the work is finished?', 'Client confirmation requested.', onSaved);
 
     const refreshJobs = () => {
         router.reload({ only: ['jobs'] });
@@ -70,11 +72,17 @@ export default function RepairerDashboard({
                     schedule={schedule}
                     isGoogleConnected={isGoogleConnected}
                     conversations={conversations}
+                    notifications={notifications}
+                    unreadNotificationsCount={unreadNotificationsCount}
+                    jobCounts={jobCounts}
+                    onOpenNotification={onOpenNotification}
                     
                     onSwitchToCustomer={onSwitchToCustomer}
                     onApprove={handleApprove} 
                     onReject={handleReject}
                     onComplete={handleComplete} 
+                    actionBusy={actionBusy}
+                    actionFeedback={actionFeedback}
                     onRefresh={refreshJobs}
                     onLogout={handleLogout} 
                 />
@@ -82,6 +90,7 @@ export default function RepairerDashboard({
 
             {/* 2. DESKTOP VIEW */}
             <div className="hidden md:block">
+                {actionFeedback && <p role={actionFeedback.kind === 'error' ? 'alert' : 'status'} className={`mx-auto max-w-5xl rounded-xl p-3 text-sm ${actionFeedback.kind === 'error' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-800'}`}>{actionFeedback.text}</p>}
                 <RepairerDesktop 
                     user={user} 
                     profile={profile} 

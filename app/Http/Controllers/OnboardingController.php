@@ -20,7 +20,7 @@ class OnboardingController extends Controller
     public function showForm(): Response
     {
         // 1. FETCH SKILLS: Get the list of skills from the database
-        $skills = Skill::all(['id', 'name', 'slug']);
+        $skills = Skill::catalog()->get(['id', 'name', 'slug', 'service_group', 'description']);
 
         return Inertia::render('onboarding/OnboardingProfile', [
             'auth' => [
@@ -52,7 +52,7 @@ class OnboardingController extends Controller
             $rules['business_name'] = 'required|string|max:255';
             $rules['bio'] = 'nullable|string|max:500';
             $rules['skills'] = 'required|array|min:1';
-            $rules['skills.*'] = 'exists:skills,id';
+            $rules['skills.*'] = \Illuminate\Validation\Rule::exists('skills', 'id')->where('is_active', true);
         }
 
         $validated = $request->validate($rules);

@@ -5,16 +5,23 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\User;
 use App\Models\RepairerProfile;
+use App\Models\Skill;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Google\Client as GoogleClient;
 use Google\Service\Calendar as GoogleCalendar;
 use Google\Service\Calendar\Event;
 use Inertia\Inertia;
-use App\Models\RepairerAvailability;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\Review;
+use App\Services\BookingSlot;
+use App\Services\NotificationRecorder;
+use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 class BookingController extends Controller
 {
@@ -46,15 +53,19 @@ class BookingController extends Controller
         ]);
     }
     // 1. STORE (Customer Creates Request)
-    public function store(Request $request)
+    public function store(Request $request, BookingSlot $slots, NotificationRecorder $notifier)
     {
         $validated = $request->validate([
             'repairer_profile_id' => 'required|exists:repairer_profiles,id',
-            'service_type'        => 'required|string',
-            'scheduled_at'        => 'required|date|after:now',
+            'service_type'        => 'required|string|max:255',
+            'scheduled_at'        => 'required|date_format:Y-m-d H:i',
             'problem_description' => 'nullable|string',
+            'service_area' => ['required', Rule::in(array_keys(config('pilot_areas.areas')))],
+            'job_address' => ['required', 'string', 'max:255'],
+            'job_latitude' => ['required', 'numeric', 'between:-90,90'],
+            'job_longitude' => ['required', 'numeric', 'between:-180,180'],
         ], [
-            'scheduled_at.after' => 'You cannot book a time in the past.',
+            'scheduled_at.date_format' => 'Choose a valid date and time in the format YYYY-MM-DD HH:MM.',
         ]);
 
         $targetProfile = RepairerProfile::findOrFail($validated['repairer_profile_id']);
@@ -64,86 +75,78 @@ class BookingController extends Controller
                 'message' => 'You cannot book your own services! Switch to Repairer Mode.'
             ]);
         }
-
-        // Parse Time
-        $startTime = \Carbon\Carbon::parse($validated['scheduled_at']);
-        $endTime = $startTime->copy()->addHour(); // Default 1 hour duration
-
-        // Check Availability
-        $dayIndex = (int) $startTime->format('w');
-        $hasSetSchedule = RepairerAvailability::where('repairer_profile_id', $targetProfile->id)->exists();
-
-        if ($hasSetSchedule) {
-            $isAvailable = RepairerAvailability::where('repairer_profile_id', $targetProfile->id)
-                ->where('day_of_week', $dayIndex)
-                ->where('is_active', true)
-                ->exists();
-
-            if (!$isAvailable) {
-                $dayName = $startTime->format('l');
-                return back()->withErrors(['scheduled_at' => "This repairer is not available on {$dayName}s."]);
-            }
+        if (! in_array($validated['service_area'], $targetProfile->service_areas ?? [], true)) {
+            throw ValidationException::withMessages(['service_area' => 'This provider does not serve the selected job area.']);
+        }
+        $category = Skill::catalog()->where('name', $validated['service_type'])->first();
+        if (! $category || ! $targetProfile->skills()->where('skills.id', $category->id)->exists()) {
+            throw ValidationException::withMessages(['service_type' => 'Choose a service this provider offers.']);
         }
 
-        // Check for double booking
-        $exactCollision = Booking::where('repairer_profile_id', $targetProfile->id)
-            ->where('scheduled_at', $startTime)
-            ->where('status', 'confirmed')
-            ->exists();
-
-        if ($exactCollision) {
-            return back()->withErrors(['scheduled_at' => 'This time is already booked.']);
+        // Booking timestamps and weekly working hours are interpreted in the app's Asia/Manila timezone.
+        $startTime = $slots->fromInput($validated['scheduled_at']);
+        if ($error = $slots->availabilityError($targetProfile->id, $startTime)) {
+            throw ValidationException::withMessages(['scheduled_at' => $error]);
+        }
+        if ($slots->confirmedAtSameStart($targetProfile->id, $startTime)) {
+            throw ValidationException::withMessages(['scheduled_at' => 'This time is already booked.']);
         }
 
         // Create Booking
-        Booking::create([
-            'customer_id'         => Auth::id(),
-            'repairer_profile_id' => $validated['repairer_profile_id'],
-            'service_type'        => $validated['service_type'],
-            'scheduled_at'        => $validated['scheduled_at'],
-            'status'              => 'pending',
-            'problem_description' => $validated['problem_description'],
-        ]);
+        DB::transaction(function () use ($validated, $startTime, $request, $targetProfile, $notifier) {
+            $booking = Booking::create([
+                'customer_id'         => Auth::id(),
+                'repairer_profile_id' => $validated['repairer_profile_id'],
+                'service_type'        => $validated['service_type'],
+                'scheduled_at'        => $startTime->format('Y-m-d H:i:s'),
+                'status'              => 'pending',
+                'problem_description' => $validated['problem_description'] ?? null,
+                'location_snapshot' => $validated['job_address'],
+                'service_area' => $validated['service_area'],
+                'job_latitude' => $validated['job_latitude'],
+                'job_longitude' => $validated['job_longitude'],
+            ]);
+            $notifier->record($booking, $targetProfile->user_id, Auth::id(), 'booking_requested', "booking_requested:{$booking->id}");
+        });
 
         return redirect()->back()->with('message', 'Request sent! Waiting for repairer confirmation.');
     }
 
     // 2. APPROVE (Repairer Accepts & Syncs)
-    public function approve(Request $request, $id)
+    public function approve(Request $request, $id, BookingSlot $slots, NotificationRecorder $notifier)
     {
-        $booking = Booking::findOrFail($id);
-        $repairerProfile = RepairerProfile::find($booking->repairer_profile_id);
+        [$booking, $repairerProfile] = DB::transaction(function () use ($id, $slots, $notifier) {
+            [$booking, $repairerProfile] = $this->lockedOwnedBooking($id);
+            if ($booking->status !== 'pending') {
+                throw ValidationException::withMessages(['message' => 'Only pending requests can be accepted.']);
+            }
 
-        if (!$repairerProfile) {
-            abort(404, 'Profile not found');
-        }
+            $startTime = CarbonImmutable::instance($booking->scheduled_at)->setTimezone(config('app.timezone'));
+            if ($error = $slots->availabilityError($repairerProfile->id, $startTime)) {
+                throw ValidationException::withMessages(['scheduled_at' => $error]);
+            }
+            if ($slots->confirmedAtSameStart($repairerProfile->id, $startTime, $booking->id)) {
+                throw ValidationException::withMessages(['scheduled_at' => 'This time is already booked.']);
+            }
 
-        if ($repairerProfile->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
-            abort(403, 'Unauthorized');
-        }
+            $booking->update(['status' => 'confirmed']);
+            $conversation = Conversation::firstOrCreate(
+                ['booking_id' => $booking->id],
+                ['sender_id' => $booking->customer_id, 'receiver_id' => $repairerProfile->user_id]
+            );
+            Message::create([
+                'conversation_id' => $conversation->id,
+                'sender_id' => $repairerProfile->user_id,
+                'content' => "Hello! I have accepted your request for {$booking->service_type}. I will see you on {$startTime->format('M d, h:i A')}."
+            ]);
+            $notifier->record($booking, $booking->customer_id, $repairerProfile->user_id, 'booking_approved', "booking_approved:{$booking->id}");
 
-        // 1. Update Status
-        $booking->update(['status' => 'confirmed']);
-
-        $conversation = Conversation::firstOrCreate(
-            ['booking_id' => $booking->id],
-            [
-                'sender_id' => $booking->customer_id,
-                'receiver_id' => $repairerProfile->user_id
-            ]
-        );
-
-        $formattedDate = \Carbon\Carbon::parse($booking->scheduled_at)->format('M d, h:i A');
-
-        Message::create([
-            'conversation_id' => $conversation->id,
-            'sender_id'       => $repairerProfile->user_id, // Sent by Repairer
-            'content'         => "Hello! I have accepted your request for {$booking->service_type}. I will see you on {$formattedDate}."
-        ]);
+            return [$booking, $repairerProfile];
+        });
 
         // 2. Sync to Google Calendar (Your existing code)
         $repairerUser = $repairerProfile->user;
-        $customer = User::with('location')->find($booking->customer_id);
+        $customer = User::find($booking->customer_id);
 
         if ($repairerUser && $repairerUser->google_calendar_token) {
             $eventId = $this->addToGoogleCalendar($booking, $repairerUser, $customer);
@@ -156,51 +159,57 @@ class BookingController extends Controller
     }
 
     // 3. REJECT
-    public function reject(Request $request, $id)
+    public function reject(Request $request, $id, NotificationRecorder $notifier)
     {
-        $booking = Booking::findOrFail($id);
-
-        // Find the profile belonging to the logged-in user
-        $repairerProfile = RepairerProfile::where('user_id', Auth::id())->first();
-
-        // Validate ownership
-        if (!$repairerProfile || $booking->repairer_profile_id !== $repairerProfile->id) {
-            abort(403, 'Unauthorized');
-        }
-
-        $booking->update(['status' => 'rejected']);
+        DB::transaction(function () use ($id, $notifier) {
+            [$booking, $profile] = $this->lockedOwnedBooking($id);
+            if ($booking->status !== 'pending') {
+                throw ValidationException::withMessages(['message' => 'Only pending requests can be declined.']);
+            }
+            $booking->update(['status' => 'rejected']);
+            $notifier->record($booking, $booking->customer_id, $profile->user_id, 'booking_rejected', "booking_rejected:{$booking->id}");
+        });
 
         return redirect()->back()->with('message', 'Request declined.');
     }
 
-    // 4. COMPLETE (Repairer Marks Job as Done)
-    public function complete(Request $request, $id)
+    // 4. Provider requests client confirmation of finished work.
+    public function complete(Request $request, $id, NotificationRecorder $notifier)
     {
-        $booking = Booking::findOrFail($id);
+        DB::transaction(function () use ($id, $notifier) {
+            [$booking, $profile] = $this->lockedOwnedBooking($id);
+            if ($booking->status === 'completion_requested') {
+                return;
+            }
+            if (!in_array($booking->status, ['confirmed', 'completion_disputed'], true)) {
+                throw ValidationException::withMessages(['message' => 'Only confirmed or disputed work can be submitted for client confirmation.']);
+            }
 
-        // Security Check: Only the assigned Repairer can mark it done
-        $repairerProfile = RepairerProfile::where('user_id', Auth::id())->first();
-
-        if (!$repairerProfile || $booking->repairer_profile_id !== $repairerProfile->id) {
-            abort(403, 'Only the repairer can complete this job.');
-        }
-
-        if ($booking->status !== 'confirmed') {
-            return back()->withErrors(['message' => 'Job must be in progress to complete it.']);
-        }
-
-        $booking->update(['status' => 'completed']);
-
-        // Optional: Send a "Job Done" message to the chat automatically
-        if ($booking->conversation) {
-            Message::create([
-                'conversation_id' => $booking->conversation->id,
-                'sender_id'       => Auth::id(),
-                'content'         => "I have marked this job as completed. Thank you!"
+            $booking->update(['status' => 'completion_requested', 'completion_requested_at' => now()]);
+            $conversation = Conversation::firstOrCreate(
+                ['booking_id' => $booking->id],
+                ['sender_id' => $booking->customer_id, 'receiver_id' => $profile->user_id]
+            );
+            $message = Message::create([
+                'conversation_id' => $conversation->id,
+                'sender_id' => $profile->user_id,
+                'content' => 'The provider has finished the work. Please confirm completion in your booking details or report an issue.',
             ]);
-        }
+            $notifier->record($booking, $booking->customer_id, $profile->user_id, 'completion_requested', "completion_requested:{$message->id}");
+        });
 
-        return redirect()->back()->with('message', 'Job marked as complete!');
+        return redirect()->back()->with('message', 'Client confirmation requested. Payment is not yet recorded.');
+    }
+
+    private function lockedOwnedBooking($id): array
+    {
+        $profileId = Booking::findOrFail($id)->repairer_profile_id;
+        // Lock the provider row first so approvals for different requests at one slot serialize.
+        $profile = RepairerProfile::whereKey($profileId)->lockForUpdate()->firstOrFail();
+        abort_unless($profile->user_id === Auth::id(), 403);
+        $booking = Booking::whereKey($id)->lockForUpdate()->firstOrFail();
+
+        return [$booking, $profile];
     }
 
     // --- HELPER: SYNC TO GOOGLE ---
@@ -240,10 +249,7 @@ class BookingController extends Controller
             $endStr = $endTime->format('Y-m-d\TH:i:s');
 
 
-            $locationString = 'Customer Location';
-            if ($customer->location) {
-                $locationString = $customer->location->address;
-            }
+            $locationString = $booking->location_snapshot ?: 'Service address unavailable';
 
             $event = new Event([
                 'summary' => 'Repair Job: ' . $booking->service_type,
@@ -281,40 +287,37 @@ class BookingController extends Controller
 
     public function storeReview(Request $request, $id)
     {
-        // 1. Validate
-        $request->validate([
+        $validated = $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'comment' => 'nullable|string|max:500',
         ]);
 
-        // 2. Find Booking
-        $booking = Booking::with('repairerProfile')->findOrFail($id);
+        try {
+            $repairerUserId = DB::transaction(function () use ($request, $id, $validated) {
+                $booking = Booking::with('repairerProfile')->lockForUpdate()->findOrFail($id);
+                abort_unless($request->user()->user_id === $booking->customer_id, 403);
+                if ($booking->status !== 'completed' || !$booking->client_accepted_at) {
+                    throw ValidationException::withMessages(['message' => 'Only client-accepted work can be reviewed.']);
+                }
+                if (Review::where('booking_id', $booking->id)->exists()) {
+                    throw ValidationException::withMessages(['message' => 'This job has already been reviewed.']);
+                }
 
-        if ($request->user()->user_id !== $booking->customer_id) {
-            abort(403, 'Unauthorized');
+                Review::create([
+                    'booking_id' => $booking->id,
+                    'customer_id' => $request->user()->user_id,
+                    'repairer_id' => $booking->repairerProfile->user_id,
+                    'rating' => $validated['rating'],
+                    'comment' => $validated['comment'] ?? null,
+                ]);
+
+                return $booking->repairerProfile->user_id;
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages(['message' => 'This job has already been reviewed.']);
         }
 
-        // 3. Prevent Duplicates
-        // If a review exists, we return error, BUT we still run the math just to fix your stuck database
-        $existingReview = \App\Models\Review::where('booking_id', $booking->id)->first();
-
-        if ($existingReview) {
-            // OPTIONAL: Run the math fix here too, just to un-stick your database
-            $this->recalculateRating($booking->repairerProfile->user_id);
-            return redirect()->back()->with('error', 'You have already reviewed this job (Rating calculation refreshed).');
-        }
-
-        // 4. Save the New Review
-        \App\Models\Review::create([
-            'booking_id' => $booking->id,
-            'customer_id' => $request->user()->user_id,
-            'repairer_id' => $booking->repairerProfile->user_id,
-            'rating' => $request->rating,
-            'comment' => $request->comment,
-        ]);
-
-        // 5. Run the Math
-        $newRating = $this->recalculateRating($booking->repairerProfile->user_id);
+        $newRating = $this->recalculateRating($repairerUserId);
 
         return redirect()->back()->with('success', "Review submitted! New Rating: {$newRating}");
     }

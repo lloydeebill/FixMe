@@ -125,10 +125,8 @@ export default function RepairerDesktop({
     const handleRejectAndClose = (id) => { onReject(id); setSelectedJob(null); };
 
     const handleCompleteAndClose = (id) => {
-        if(confirm("Are you sure this job is finished?")) {
-            onComplete(id);
-            setSelectedJob(null);
-        }
+        onComplete(id);
+        setSelectedJob(null);
     };
 
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -139,16 +137,17 @@ export default function RepairerDesktop({
     const JobDetailsModal = ({ job, onClose }) => {
         if (!job) return null;
 
-        const repairerLat = parseFloat(profile?.location?.latitude || user?.location?.latitude || 7.1907);
-        const repairerLng = parseFloat(profile?.location?.longitude || user?.location?.longitude || 125.4553);
+        const repairerLat = parseFloat(profile?.location?.latitude ?? user?.location?.latitude);
+        const repairerLng = parseFloat(profile?.location?.longitude ?? user?.location?.longitude);
         const customerLat = parseFloat(job.latitude);
         const customerLng = parseFloat(job.longitude);
         const hasCustomerLocation = !isNaN(customerLat) && !isNaN(customerLng);
+        const hasRepairerLocation = !isNaN(repairerLat) && !isNaN(repairerLng);
         const mapCenter = hasCustomerLocation ? [customerLat, customerLng] : [repairerLat, repairerLng];
-        const distance = hasCustomerLocation ? getDistance(repairerLat, repairerLng, customerLat, customerLng) : "Unknown";
+        const distance = hasCustomerLocation && hasRepairerLocation ? getDistance(repairerLat, repairerLng, customerLat, customerLng) : null;
 
         const openGoogleMaps = () => {
-            if (!hasCustomerLocation) return alert("No customer location available.");
+            if (!hasCustomerLocation || !hasRepairerLocation) return alert("Saved locations are unavailable.");
             window.open(`https://www.google.com/maps/dir/?api=1&origin=${repairerLat},${repairerLng}&destination=${customerLat},${customerLng}&travelmode=driving`, '_blank');
         };
 
@@ -160,27 +159,27 @@ export default function RepairerDesktop({
 
                     {/* LEFT SIDE: MAP */}
                     <div className="w-1/2 bg-[#f4f6f8] relative h-full">
-                        <MapContainer
+                        {(hasCustomerLocation || hasRepairerLocation) ? <MapContainer
                             key={job.id}
                             center={mapCenter}
                             zoom={13}
                             style={{ height: '100%', width: '100%' }}
                         >
                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
-                            <Marker position={[repairerLat, repairerLng]} icon={createEmojiIcon('repairer')}>
+                            {hasRepairerLocation && <Marker position={[repairerLat, repairerLng]} icon={createEmojiIcon('repairer')}>
                                 <Popup><strong>You (Repairer)</strong></Popup>
-                            </Marker>
+                            </Marker>}
                             {hasCustomerLocation && (
                                 <Marker position={[customerLat, customerLng]} icon={createEmojiIcon('customer')}>
-                                    <Popup><strong>Customer</strong><br/>{distance} km away</Popup>
+                                    <Popup><strong>Client service location</strong>{distance && <><br/>{distance} km away</>}</Popup>
                                 </Marker>
                             )}
-                            {hasCustomerLocation && <FitBounds markers={[[repairerLat, repairerLng], [customerLat, customerLng]]} />}
+                            {hasCustomerLocation && hasRepairerLocation && <FitBounds markers={[[repairerLat, repairerLng], [customerLat, customerLng]]} />}
                             <MapInvalidator />
-                        </MapContainer>
+                        </MapContainer> : <p className="p-8 text-sm text-[#647084]">No saved coordinates are available for this booking.</p>}
 
                         {/* Overlay Info */}
-                        <div className="absolute bottom-6 left-6 z-[500] bg-white/90 backdrop-blur-md px-4 py-3 rounded-xl shadow-sm border border-white/50">
+                        {distance && <div className="absolute bottom-6 left-6 z-[500] bg-white/90 backdrop-blur-md px-4 py-3 rounded-xl shadow-sm border border-white/50">
                              <div className="flex items-center gap-3">
                                 <span className="text-2xl">🚗</span>
                                 <div>
@@ -188,10 +187,10 @@ export default function RepairerDesktop({
                                     <p className="font-semibold text-[#172335] leading-none text-lg">{distance} km</p>
                                 </div>
                              </div>
-                        </div>
+                        </div>}
 
                         {/* Google Maps Button */}
-                        {hasCustomerLocation && (
+                        {hasCustomerLocation && hasRepairerLocation && (
                             <button
                                 onClick={openGoogleMaps}
                                 // Changed button to Brown
@@ -223,7 +222,7 @@ export default function RepairerDesktop({
                             {/* Customer Row */}
                             <div className="flex items-center gap-4">
                                 <div className="h-12 w-12 bg-[#f4f6f8] rounded-full flex items-center justify-center text-xl font-semibold text-[#647084] border border-[#e3e8ef]">
-                                    {job.customer?.name.charAt(0)}
+                                    {job.customer?.name?.charAt(0) || '?'}
                                 </div>
                                 <div>
                                     <p className="text-[10px] text-gray-400 font-bold uppercase">Customer Name</p>
@@ -282,15 +281,12 @@ export default function RepairerDesktop({
                                         onClick={() => handleCompleteAndClose(job.id)}
                                         className="py-4 rounded-xl bg-[#0965e8] text-white font-bold hover:bg-[#0753be] shadow-sm transition-colors"
                                     >
-                                        Complete Job
+                                        Request Confirmation
                                     </button>
                                 </div>
                             ) : (
-                                <button
-                                    onClick={onClose}
-                                    className="w-full py-4 rounded-xl bg-gray-100 text-gray-700 font-bold border border-gray-200"
-                                >
-                                    Close Details
+                                <button onClick={() => router.visit(`/bookings/${job.id}`)} className="w-full py-4 rounded-xl bg-[#0965e8] text-white font-bold">
+                                    View completion and payment
                                 </button>
                             )}
                         </div>
@@ -332,7 +328,7 @@ export default function RepairerDesktop({
     // 1. JOBS MENU
     const JobsMenu = () => {
         const pendingCount = jobs.filter(j => j.status === 'pending').length;
-        const activeCount = jobs.filter(j => j.status === 'confirmed').length;
+        const activeCount = jobs.filter(j => ['confirmed', 'in_progress', 'completion_requested', 'completion_disputed'].includes(j.status)).length;
         const completedCount = jobs.filter(j => j.status === 'completed').length;
 
         const nextJob = jobs
@@ -416,7 +412,9 @@ export default function RepairerDesktop({
 
     // 2. JOBS LIST (THE TABLE)
     const JobsList = () => {
-        const filteredJobs = jobs.filter(j => j.status === selectedStatus);
+        const filteredJobs = jobs.filter(j => selectedStatus === 'confirmed'
+            ? ['confirmed', 'in_progress', 'completion_requested', 'completion_disputed'].includes(j.status)
+            : j.status === selectedStatus);
 
         let title = 'Pending Requests';
         if (selectedStatus === 'confirmed') title = 'Active Jobs';
@@ -507,11 +505,10 @@ export default function RepairerDesktop({
                         <div className="flex justify-between items-start mb-4">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 bg-[#f4f6f8] rounded-full overflow-hidden"><img src={`https://ui-avatars.com/api/?name=${chat.other_user_name}&background=random`} className="h-full w-full object-cover"/></div>
-                                <div><h3 className="font-bold text-[#172335] group-hover:text-[#0965e8] transition-colors">{chat.other_user_name}</h3><p className="text-xs text-gray-500">{chat.last_message_time || 'Just now'}</p></div>
+                                <div><h3 className="font-bold text-[#172335] group-hover:text-[#0965e8] transition-colors">{chat.other_user_name}</h3>{chat.last_message_time && <p className="text-xs text-gray-500">{chat.last_message_time}</p>}</div>
                             </div>
-                            {chat.unread_count > 0 && <div className="h-2 w-2 bg-red-500 rounded-full"></div>}
                         </div>
-                        <p className="text-sm text-gray-600 line-clamp-2">"{chat.last_message_content || 'Chat started'}"</p>
+                        <p className="text-sm text-gray-600 line-clamp-2">{chat.last_message_content ?? 'No messages yet'}</p>
                         <div className="mt-4 pt-3 border-t border-[#e3e8ef] flex justify-end"><span className="text-xs font-bold text-[#0965e8] group-hover:underline">Open Conversation →</span></div>
                     </div>
                 ))
@@ -592,8 +589,9 @@ export default function RepairerDesktop({
 
                     <nav className="space-y-2">
                         <SidebarItem id="jobs" label="Jobs" icon={<FiBriefcase />} disabled={!isOnSchedule} />
-                        <SidebarItem id="chats" label="Messages" icon={<FiMessageCircle />} disabled={!isOnSchedule} badge={conversations.filter(c => c.unread_count > 0).length} />
+                        <SidebarItem id="chats" label="Messages" icon={<FiMessageCircle />} disabled={!isOnSchedule} />
                         <SidebarItem id="schedule" label="Schedule" icon={<FiCalendar />} disabled={false} />
+                        <a href="/settings" className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#0965e8] hover:bg-[#edf4ff]">Account settings &amp; GCash QR</a>
                         <a href="/provider/tesda-qualifications" className="block rounded-xl px-4 py-3 text-sm font-semibold text-[#0965e8] hover:bg-[#edf4ff]">TESDA Qualifications</a>
                     </nav>
                 </div>

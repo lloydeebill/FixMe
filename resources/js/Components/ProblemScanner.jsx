@@ -1,19 +1,21 @@
 import '../skilllink.css';
 import React, { useState, useRef } from 'react';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import AiProviderSuggestion from './AiProviderSuggestion';
 
 
-const ProblemScanner = ({ onBack, onFindFixer }) => {
+const ProblemScanner = ({ onBack, onFindFixer, catalogCategories, onSelectCategory }) => {
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState("");
+    const [analysisSucceeded, setAnalysisSucceeded] = useState(false);
     const fileInputRef = useRef(null);
 
     const handleBack = () => {
         setImageFile(null);
         setImagePreview(null);
         setAnalysisResult("");
+        setAnalysisSucceeded(false);
         onBack();
     };
 
@@ -25,6 +27,7 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
             reader.onloadend = () => setImagePreview(reader.result);
             reader.readAsDataURL(file);
             setAnalysisResult("");
+            setAnalysisSucceeded(false);
         }
     };
 
@@ -43,6 +46,7 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
         if (!imageFile) return;
         setIsAnalyzing(true);
         setAnalysisResult("");
+        setAnalysisSucceeded(false);
 
         try {
             // Convert file to base64
@@ -55,21 +59,29 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
             // Call your Laravel backend instead of Google
             const response = await fetch('/api/scan-problem', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                },
                 body: JSON.stringify({ image: base64Data })
             });
 
             // In ProblemScanner.jsx
             const data = await response.json();
 
-            if (data.error) {
-                setAnalysisResult("Error: " + (data.error.message || "Something went wrong. Please check your quota."));
+            if (!response.ok || data.error) {
+                setAnalysisResult("The initial assessment is unavailable. Please try again.");
                 return;
             }
 
             // Now safely access the data
-            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No diagnosis found.";
+            const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!resultText) {
+                setAnalysisResult("No assessment was returned. Please try again.");
+                return;
+            }
             setAnalysisResult(resultText);
+            setAnalysisSucceeded(true);
 
         } catch (error) {
             console.error("Backend Error:", error);
@@ -107,7 +119,7 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="text-[#0965e8] font-bold">2.</span>
-                                    Let the AI diagnose the problem instantly.
+                                    Get an initial assessment from the photo.
                                 </li>
                                 <li className="flex items-start gap-2">
                                     <span className="text-[#0965e8] font-bold">3.</span>
@@ -143,18 +155,18 @@ const ProblemScanner = ({ onBack, onFindFixer }) => {
                         <div className="sl-ai-card rounded-2xl p-4 border border-white/50 text-[#172335]">
                             <div className="flex items-center gap-2 mb-3">
                                 <span className="section-badge bg-[#c8a97a]/20 text-lg">🤖</span>
-                                <h3 className="font-bold text-sm">Diagnosis Complete</h3>
+                                <h3 className="font-bold text-sm">{analysisSucceeded ? 'Initial assessment' : 'Assessment unavailable'}</h3>
                             </div>
                             <div className="text-xs leading-relaxed space-y-2 whitespace-pre-line font-medium text-gray-700">
                                 {analysisResult}
                             </div>
 
-                            <div className="mt-5 text-center border-t border-black/10 pt-4">
+                            {analysisSucceeded && (catalogCategories ? <AiProviderSuggestion categories={catalogCategories} resultText={analysisResult} onSelectCategory={onSelectCategory} /> : <div className="mt-5 text-center border-t border-black/10 pt-4">
                                 <p className="text-xs text-gray-500 font-bold mb-3">Having a hard time fixing this?</p>
                                 <button onClick={onFindFixer} className="sl-ai-primary py-3 w-full text-xs">
                                     Find a Local Repairer
                                 </button>
-                            </div>
+                            </div>)}
                         </div>
                     )}
                 </div>

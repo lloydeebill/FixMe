@@ -2,13 +2,13 @@ import '../skilllink.css';
 import React, { useState } from 'react';
 import { Link } from '@inertiajs/react';
 
-export default function AuthenticatedLayout({ user, header, children }) {
+export default function AuthenticatedLayout({ user, header, children, hideMobileNavigation = false }) {
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
 
     return (
         <div className="skilllink-screen min-h-screen bg-gray-100">
             {/* --- TOP NAVIGATION BAR --- */}
-            <nav className="bg-white border-b border-gray-100">
+            <nav className={`${hideMobileNavigation ? 'hidden sm:block' : ''} bg-white border-b border-gray-100`}>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
 
@@ -40,7 +40,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
                                         href="/become-repairer"
                                         className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent hover:border-blue-500 text-sm font-bold leading-5 text-[#0965e8] hover:text-blue-800 transition duration-150 ease-in-out"
                                     >
-                                        Become a Pro
+                                        Offer Services
                                     </Link>
                                 )}
 
@@ -122,7 +122,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
                                 href="/become-repairer"
                                 className="block w-full pl-3 pr-4 py-2 border-l-4 border-transparent text-left text-base font-bold text-gray-600 hover:text-[#0965e8] hover:bg-gray-50 hover:border-gray-300 focus:outline-none transition duration-150 ease-in-out"
                             >
-                                Become a Pro
+                                Offer Services
                             </Link>
                         )}
                     </div>
@@ -150,7 +150,7 @@ export default function AuthenticatedLayout({ user, header, children }) {
 
             {/* --- PAGE HEADER --- */}
             {header && (
-                <header className="bg-white shadow">
+                <header className={`${hideMobileNavigation ? 'hidden sm:block' : ''} bg-white shadow`}>
                     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                         {header}
                     </div>

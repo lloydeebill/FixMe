@@ -24,7 +24,13 @@ class RepairerProfile extends Model
         'bio',
         'rating',
         'clients_helped',
+        'gcash_qr_path',
+        'service_areas',
     ];
+
+    protected $casts = ['service_areas' => 'array'];
+
+    protected $hidden = ['gcash_qr_path'];
 
     /**
      * Get the User that owns the RepairerProfile.

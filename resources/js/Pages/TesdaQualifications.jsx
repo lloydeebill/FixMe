@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import '../skilllink.css';
+import { FiArrowLeft } from 'react-icons/fi';
 
 const fields = [
     ['document_type', 'Document type'], ['holder_name', 'Holder name'],
@@ -48,13 +49,14 @@ export default function TesdaQualifications({ qualifications = [] }) {
 
     return <main className="skilllink-screen min-h-screen px-4 py-6 sm:px-8 sm:py-10">
         <Head title="TESDA Qualifications" />
+        <header className="-mx-4 -mt-6 mb-4 flex min-h-14 items-center gap-2 bg-white px-4 py-3 sm:hidden"><Link href="/app?tab=settings" aria-label="Back to Settings" className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-lg text-[#0965e8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0965e8]"><FiArrowLeft aria-hidden="true" /></Link><h1 className="min-w-0 text-xl font-semibold text-[#172335]">TESDA Qualifications</h1></header>
         <div className="mx-auto max-w-4xl">
-            <Link href="/app" className="text-sm font-semibold text-[#0965e8]">← Back to dashboard</Link>
-            <header className="mt-6 mb-6">
-                <span className="text-2xl font-semibold text-[#0965e8]">SkillLink</span>
-                <h1 className="mt-5 text-2xl font-semibold text-[#172335] sm:text-3xl">TESDA Qualifications</h1>
+            <Link href="/app" className="hidden text-sm font-semibold text-[#0965e8] sm:inline">← Back to dashboard</Link>
+            <div className="mb-6 sm:mt-6">
+                <span className="hidden text-2xl font-semibold text-[#0965e8] sm:inline">SkillLink</span>
+                <h1 className="hidden text-xl font-semibold text-[#172335] sm:mt-5 sm:block sm:text-3xl">TESDA Qualifications</h1>
                 <p className="mt-2 text-sm text-[#647084]">Automated screening checks readability and consistency. It does not confirm issuance by TESDA.</p>
-            </header>
+            </div>
 
             <form onSubmit={submit} className="rounded-2xl border border-[#e3e8ef] bg-white p-5 sm:p-7">
                 <h2 className="font-semibold">Add a qualification</h2>

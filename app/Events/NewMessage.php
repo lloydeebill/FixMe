@@ -16,12 +16,14 @@ class NewMessage implements ShouldBroadcast
 
     public $message;
     public $receiverId; // <--- WE ADD THIS MANUALLY
+    public $bookingId;
 
     // We pass the Message object AND the ID of the person receiving it
-    public function __construct(Message $message, $receiverId)
+    public function __construct(Message $message, $receiverId, $bookingId)
     {
         $this->message = $message;
         $this->receiverId = $receiverId;
+        $this->bookingId = $bookingId;
     }
 
     public function broadcastOn(): array
